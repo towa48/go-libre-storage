@@ -8,14 +8,17 @@ import (
 func setupRouter() *gin.Engine {
 	// Disable Console Color
 	// gin.DisableConsoleColor()
-	r := gin.Default()
+	router := gin.Default()
 
 	// Home
-	r.GET("/", func(c *gin.Context) {
+	router.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "Hello world!")
 	})
 
-	return r
+	// Accounts
+	Accounts(router)
+
+	return router
 }
 
 func main() {

@@ -3,6 +3,12 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "xINR1n6BVytMM810YsePqCCF6z0=",
+			"path": "github.com/flosch/pongo2",
+			"revision": "24195e6d38b06020d7a92c7b11960cf2e7cad2f2",
+			"revisionTime": "2018-08-09T10:06:17Z"
+		},
+		{
 			"checksumSHA1": "BhMowD2DIKSd9qq8Pzh7Y3mh2/w=",
 			"path": "github.com/gin-contrib/sse",
 			"revision": "22d885f9ecc78bf4ee5d72b937e4bbcdc58e8cae",
@@ -43,6 +49,12 @@
 			"path": "github.com/json-iterator/go",
 			"revision": "2433035e513208b0f7bd5b50d0aecd889b2c1ff8",
 			"revisionTime": "2018-09-14T01:48:43Z"
+		},
+		{
+			"checksumSHA1": "m8I0grXI9ucm5awJzqADWBLWr0c=",
+			"path": "github.com/juju/errors",
+			"revision": "22422dad46e14561a0854ad42497a75af9b61909",
+			"revisionTime": "2018-08-06T07:45:54Z"
 		},
 		{
 			"checksumSHA1": "LkbotKu3JQxXEZZ9P40yhnFOycY=",

@@ -13,4 +13,5 @@
 
 # govendor
 vendor/*/
+third_party/*/
 bin/
