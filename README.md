@@ -1,7 +1,7 @@
 go-libre-sea
 =========
 
-File sync platform writen in [Go](https://golang.org) (Golang).
+Cloud storage platform writen in [Go](https://golang.org) (Golang).
 
 ## Build
 
