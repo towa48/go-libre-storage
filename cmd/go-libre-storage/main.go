@@ -23,6 +23,7 @@ func setupRouter() *gin.Engine {
 
 	Home(router)
 	Accounts(router)
+	WebDav(router)
 
 	return router
 }
