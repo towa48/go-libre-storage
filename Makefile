@@ -1,5 +1,5 @@
 VERSION?="0.0.1"
-PROJECT := github.com/towa48/go-libre-sea
+PROJECT := github.com/towa48/go-libre-storage
 GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor)
 
 tools:
@@ -7,7 +7,7 @@ tools:
 
 build:
 	@mkdir -p ./bin
-	GOGC=off go build -i -o ./bin/go-libre-sea ./cmd/go-libre-sea
+	GOGC=off go build -i -o ./bin/go-libre-storage ./cmd/go-libre-storage
 
 clean:
 	@rm -rf ./bin

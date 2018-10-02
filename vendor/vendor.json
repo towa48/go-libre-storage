@@ -3,10 +3,10 @@
 	"ignore": "test",
 	"package": [
 		{
-			"checksumSHA1": "xINR1n6BVytMM810YsePqCCF6z0=",
-			"path": "github.com/flosch/pongo2",
-			"revision": "24195e6d38b06020d7a92c7b11960cf2e7cad2f2",
-			"revisionTime": "2018-08-09T10:06:17Z"
+			"checksumSHA1": "ch5OLAHVRfk6GKe6D4Ih0wuAwwI=",
+			"path": "github.com/gin-contrib/multitemplate",
+			"revision": "5799bbbb6dce3a499d45a53176f8ad72978d951d",
+			"revisionTime": "2018-08-27T02:39:43Z"
 		},
 		{
 			"checksumSHA1": "BhMowD2DIKSd9qq8Pzh7Y3mh2/w=",
@@ -99,5 +99,5 @@
 			"revisionTime": "2018-03-28T19:50:20Z"
 		}
 	],
-	"rootPath": "github.com/towa48/go-libre-sea"
+	"rootPath": "github.com/towa48/go-libre-storage"
 }

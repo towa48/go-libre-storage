@@ -1,7 +1,7 @@
-go-libre-sea
+go-libre-storage
 =========
 
-Cloud storage platform writen in [Go](https://golang.org) (Golang).
+Cloud storage and file share platform writen in [Go](https://golang.org) (Golang).
 
 ## Build
 
@@ -18,7 +18,7 @@ Unix
 ## Run development instance
 
 ```
-> HOST="localhost" ./bin/go-libre-sea
+> HOST="localhost" ./bin/go-libre-storage
 ```
 
 ## License
