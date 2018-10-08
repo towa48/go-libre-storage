@@ -1,0 +1,3 @@
+usersDb: "./users.db"
+filesDb: "./files.db"
+storage: "./storage"

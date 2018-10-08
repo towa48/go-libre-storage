@@ -3,13 +3,14 @@ package main
 import (
 	"github.com/gin-contrib/multitemplate"
 	"github.com/gin-gonic/gin"
+	"github.com/towa48/go-libre-storage/internal/pkg/users"
 )
 
 const templatesPath = "./web/templates/"
 
 func createRender() multitemplate.Renderer {
 	r := multitemplate.NewRenderer()
-	r.AddFromFiles("login", templatesPath + "_layout.html", templatesPath + "login.html")
+	r.AddFromFiles("login", templatesPath+"_layout.html", templatesPath+"login.html")
 	//r.AddFromFiles("index", templatesPath + "_layout.html", templatesPath + "index.html")
 
 	return r
@@ -29,6 +30,7 @@ func setupRouter() *gin.Engine {
 }
 
 func main() {
+	users.CheckDatabase()
 	router := setupRouter()
 	router.Run(":3000")
 }

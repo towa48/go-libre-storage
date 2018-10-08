@@ -15,3 +15,6 @@
 vendor/*/
 third_party/*/
 bin/
+
+# sqlite
+*.db
