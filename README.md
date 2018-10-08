@@ -3,6 +3,11 @@ go-libre-storage
 
 Cloud storage and file share platform writen in [Go](https://golang.org) (Golang).
 
+## Prerequisites
+
+* [go](https://golang.org) compiler
+* [mingw64](https://sourceforge.net/projects/mingw-w64/) (win only)
+
 ## Build
 
 Windows
