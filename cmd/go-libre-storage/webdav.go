@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/xml"
-	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -55,11 +54,10 @@ func WebDav(r *gin.Engine) {
 			resp := getMultistatusResponse("/") // TODO: get root folder properties
 
 			c.Writer.Write([]byte(XmlDocumentType))
-			c.XML(http.StatusOK, resp)
+			c.XML(http.StatusMultiStatus, resp)
 			return
 		}
 
-		fmt.Println("Request: " + path)
 		c.Status(403)
 	})
 }
@@ -106,9 +104,11 @@ func getMultistatusResponse(url string) Multistatus {
 
 	return Multistatus{
 		XmlNs: "DAV:",
-		Reponse: MultistatusResponse{
-			Href:  "/",
-			Props: props,
+		Reponse: []MultistatusResponse{
+			{
+				Href:  "/",
+				Props: props,
+			},
 		},
 	}
 }
@@ -120,9 +120,9 @@ type Propfind struct {
 }
 
 type Multistatus struct {
-	XMLName xml.Name            `xml:"d:multistatus"`
-	XmlNs   string              `xml:"xmlns:d,attr"`
-	Reponse MultistatusResponse `xml:"d:response"`
+	XMLName xml.Name              `xml:"d:multistatus"`
+	XmlNs   string                `xml:"xmlns:d,attr"`
+	Reponse []MultistatusResponse `xml:"d:response"`
 }
 
 type MultistatusResponse struct {
@@ -132,9 +132,12 @@ type MultistatusResponse struct {
 
 type PropStat struct {
 	Status           string      `xml:"d:status"`
+	DateTag          string      `xml:"d:prop>d:getetag"` // only files, etag?
 	CreationDate     string      `xml:"d:prop>d:creationdate"`
 	DisplayName      string      `xml:"d:prop>d:displayname"`
 	LastModifiedDate string      `xml:"d:prop>d:getlastmodified"`
+	ContentType      string      `xml:"d:prop>d:getcontenttype"`   // only files, mime
+	ContentLength    string      `xml:"d:prop>d:getcontentlength"` // only files, bytes
 	ResourceType     interface{} `xml:"d:prop>d:resourcetype"`
 }
 
