@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/towa48/go-libre-storage/internal/pkg/files"
 )
 
 const Prefix string = "/webdav"
 const XmlDocumentType string = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+const WebDavStatusOk string = "HTTP/1.1 200 OK"
 
 func WebDav(r *gin.Engine) {
 	authorized := r.Group(Prefix, WebDavBasicAuth())
@@ -50,15 +52,15 @@ func WebDav(r *gin.Engine) {
 		err = xml.Unmarshal(data, &req)
 		// TODO: analyze request payload
 
-		if path == "/" && depth == 0 {
-			resp := getMultistatusResponse("/") // TODO: get root folder properties
+		includeContent := depth == 1
+		payload := files.GetPathInfo(path, 0, includeContent)
 
-			c.Writer.Write([]byte(XmlDocumentType))
-			c.XML(http.StatusMultiStatus, resp)
-			return
-		}
+		resp := getMultistatusResponse(payload)
 
-		c.Status(403)
+		httpStatus := http.StatusMultiStatus
+		c.Status(httpStatus)
+		c.Writer.Write([]byte(XmlDocumentType))
+		c.XML(httpStatus, resp)
 	})
 }
 
@@ -87,29 +89,44 @@ func parseDepth(s string) int {
 	return invalidDepth
 }
 
-func getMultistatusResponse(url string) Multistatus {
-	timeNow := time.Now()
-	createdTimeVal := timeNow.Format(time.RFC3339)
-	modifiedTimeVal := timeNow.Format(time.RFC1123)
+func getMultistatusResponse(payload []files.FileInfo) Multistatus {
+	var responses []MultistatusResponse
 
-	props := []PropStat{
-		{
-			Status:           "HTTP/1.1 200 OK",
-			CreationDate:     createdTimeVal,
-			DisplayName:      "box",
-			LastModifiedDate: modifiedTimeVal,
-			ResourceType:     &CollectionResourceType{},
-		},
+	for _, fi := range payload {
+		if fi.IsDir {
+			responses = append(responses, MultistatusResponse{
+				Href: fi.Path,
+				Props: []interface{}{
+					DirPropStat{
+						Status:           WebDavStatusOk,
+						DisplayName:      fi.Name,
+						CreationDate:     fi.CreatedDateUtc.Format(time.RFC3339),
+						LastModifiedDate: fi.ModifiedDateUtc.Format(time.RFC1123),
+						ResourceType:     &CollectionResourceType{},
+					},
+				},
+			})
+		} else {
+			responses = append(responses, MultistatusResponse{
+				Href: fi.Path,
+				Props: []interface{}{
+					FilePropStat{
+						Status:           WebDavStatusOk,
+						DisplayName:      fi.Name,
+						CreationDate:     fi.CreatedDateUtc.Format(time.RFC3339),
+						LastModifiedDate: fi.ModifiedDateUtc.Format(time.RFC1123),
+						DateTag:          fi.ETag,
+						ContentType:      fi.ContentType,
+						ContentLength:    fi.ContentLength,
+					},
+				},
+			})
+		}
 	}
 
 	return Multistatus{
-		XmlNs: "DAV:",
-		Reponse: []MultistatusResponse{
-			{
-				Href:  "/",
-				Props: props,
-			},
-		},
+		XmlNs:   "DAV:",
+		Reponse: responses,
 	}
 }
 
@@ -126,19 +143,31 @@ type Multistatus struct {
 }
 
 type MultistatusResponse struct {
-	Href  string     `xml:"d:href"`
-	Props []PropStat `xml:"d:propstat"`
+	Href  string        `xml:"d:href"`
+	Props []interface{} `xml:"d:propstat"`
 }
 
-type PropStat struct {
+type DirPropStat struct {
 	Status           string      `xml:"d:status"`
-	DateTag          string      `xml:"d:prop>d:getetag"` // only files, etag?
 	CreationDate     string      `xml:"d:prop>d:creationdate"`
 	DisplayName      string      `xml:"d:prop>d:displayname"`
 	LastModifiedDate string      `xml:"d:prop>d:getlastmodified"`
-	ContentType      string      `xml:"d:prop>d:getcontenttype"`   // only files, mime
-	ContentLength    string      `xml:"d:prop>d:getcontentlength"` // only files, bytes
 	ResourceType     interface{} `xml:"d:prop>d:resourcetype"`
+}
+
+type FilePropStat struct {
+	Status           string      `xml:"d:status"`
+	DateTag          string      `xml:"d:prop>d:getetag"`
+	CreationDate     string      `xml:"d:prop>d:creationdate"`
+	DisplayName      string      `xml:"d:prop>d:displayname"`
+	LastModifiedDate string      `xml:"d:prop>d:getlastmodified"`
+	ContentType      string      `xml:"d:prop>d:getcontenttype"`
+	ContentLength    string      `xml:"d:prop>d:getcontentlength"`
+	ResourceType     interface{} `xml:"d:prop>d:resourcetype"`
+}
+
+type Property struct {
+	XMLName xml.Name
 }
 
 type CollectionResourceType struct {
