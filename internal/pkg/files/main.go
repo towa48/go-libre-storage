@@ -24,20 +24,28 @@ type FileInfo struct {
 func GetPathInfo(path string, userId int, includeContent bool) []FileInfo {
 	var result []FileInfo
 
-	if path == "/" && !includeContent {
+	if path == "/" {
 		// TODO: get root folder info from DB
 		time := time.Now()
 		result = append(result, FileInfo{
 			Id:              0,
 			IsDir:           true,
-			Name:            "box",
+			Name:            config.Get().SystemName,
 			Path:            path,
 			CreatedDateUtc:  time,
 			ModifiedDateUtc: time,
 			OwnerId:         userId,
 		})
 		return result
+	} else {
+		// TODO: add root folder info?
 	}
+
+	if !includeContent {
+		return result
+	}
+
+	// TODO: include folder content
 
 	return result
 }

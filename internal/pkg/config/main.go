@@ -11,9 +11,10 @@ const configPath = "./configs/default.yml"
 var config *Config
 
 type Config struct {
-	UsersDb string `yaml:"usersDb"`
-	FilesDb string `yaml:"filesDb"`
-	Storage string `yaml:"storage"`
+	UsersDb    string `yaml:"usersDb"`
+	FilesDb    string `yaml:"filesDb"`
+	Storage    string `yaml:"storage"`
+	SystemName string `yaml:"systemName"`
 }
 
 func Get() Config {

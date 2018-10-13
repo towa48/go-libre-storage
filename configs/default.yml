@@ -1,4 +1,4 @@
 usersDb: "./users.db"
 filesDb: "./files.db"
-storage: "/c/storage"
-name: "box"
+storage: "C:\\storage"
+systemName: "box"

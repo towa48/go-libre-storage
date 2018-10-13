@@ -24,7 +24,28 @@ func GetAll() []User {
 	return nil
 }
 
-func GetUserByLogin(login string) (User, bool) {
+func GetUserIdByLogin(login string) (userId int, found bool) {
+	db, err := sql.Open("sqlite3", config.Get().UsersDb)
+	checkErr(err)
+	defer db.Close()
+
+	rows, err := db.Query("SELECT id FROM users WHERE login=?;", login)
+	checkErr(err)
+	defer rows.Close()
+
+	var id int
+	var f bool
+	for rows.Next() {
+		err = rows.Scan(&id)
+		checkErr(err)
+		f = true
+		break
+	}
+
+	return id, f
+}
+
+func GetUserByLogin(login string) (user User, found bool) {
 	db, err := sql.Open("sqlite3", config.Get().UsersDb)
 	checkErr(err)
 	defer db.Close()
@@ -33,16 +54,16 @@ func GetUserByLogin(login string) (User, bool) {
 	checkErr(err)
 	defer rows.Close()
 
-	var user User
-	var found bool
+	var u User
+	var f bool
 	for rows.Next() {
-		err = rows.Scan(&user.Id, &user.Login, &user.PasswordHash, &user.Salt, &user.CreatedDateUtc)
+		err = rows.Scan(&u.Id, &u.Login, &u.PasswordHash, &u.Salt, &u.CreatedDateUtc)
 		checkErr(err)
-		found = true
+		f = true
 		break
 	}
 
-	return user, found
+	return u, f
 }
 
 func CheckDatabase() {
