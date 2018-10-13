@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/xml"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -116,8 +117,8 @@ func getMultistatusResponse(payload []files.FileInfo) Multistatus {
 						CreationDate:     fi.CreatedDateUtc.Format(time.RFC3339),
 						LastModifiedDate: fi.ModifiedDateUtc.Format(time.RFC1123),
 						DateTag:          fi.ETag,
-						ContentType:      fi.ContentType,
-						ContentLength:    fi.ContentLength,
+						ContentType:      fi.Mime,
+						ContentLength:    strconv.FormatInt(fi.Size, 10),
 					},
 				},
 			})

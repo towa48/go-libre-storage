@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/gin-contrib/multitemplate"
 	"github.com/gin-gonic/gin"
+	"github.com/towa48/go-libre-storage/internal/pkg/files"
 	"github.com/towa48/go-libre-storage/internal/pkg/users"
 )
 
@@ -31,6 +32,7 @@ func setupRouter() *gin.Engine {
 
 func main() {
 	users.CheckDatabase()
+	files.CheckDatabase()
 	router := setupRouter()
 	router.Run(":3000")
 }

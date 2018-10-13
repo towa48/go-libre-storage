@@ -1,3 +1,4 @@
 usersDb: "./users.db"
 filesDb: "./files.db"
-storage: "./storage"
+storage: "/c/storage"
+name: "box"
