@@ -1,8 +1,11 @@
 package main
 
 import (
+	"crypto/md5"
 	"database/sql"
+	"encoding/hex"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"mime"
 	"os"
@@ -69,11 +72,14 @@ func crawlUserDirectory(db *sql.DB, userId int, dirPath string, parentId int64) 
 	}
 
 	var fileName string
+	var filePath string
 	var modTime time.Time
 	var dbFile files.DbFileInfo
+
 	for _, fi := range items {
 		fileName = fi.Name()
 		modTime = fi.ModTime()
+		filePath = path.Join(dirPath, fileName)
 
 		if fi.IsDir() {
 			dbFile = files.DbFileInfo{
@@ -83,25 +89,52 @@ func crawlUserDirectory(db *sql.DB, userId int, dirPath string, parentId int64) 
 				ModifiedDateUtc: modTime,
 				OwnerId:         userId,
 			}
+
 			id := files.AppendFolder(db, dbFile, parentId)
-			crawlUserDirectory(db, userId, path.Join(dirPath, fileName), id) // recurse
+			crawlUserDirectory(db, userId, filePath, id) // recurse
 		} else {
-			ext := path.Ext(fileName)
-			mime := mime.TypeByExtension(ext)
-			if mime == "" {
-				mime = DefaultMimeType
+			mime := getFileMime(fileName)
+			etag, err := getFileChecksum(filePath)
+			if err != nil {
+				fmt.Println("Cannot culculate file checksum "+filePath+".", err)
+				return
 			}
+
 			dbFile = files.DbFileInfo{
 				IsDir:           false,
 				Name:            fileName,
 				CreatedDateUtc:  modTime,
 				ModifiedDateUtc: modTime,
-				ETag:            "",
+				ETag:            etag,
 				Mime:            mime,
 				Size:            fi.Size(),
 				OwnerId:         userId,
 			}
+
 			files.AppendFile(db, dbFile, parentId)
 		}
 	}
+}
+
+func getFileMime(fileName string) string {
+	ext := path.Ext(fileName)
+	mime := mime.TypeByExtension(ext)
+	if mime == "" {
+		mime = DefaultMimeType
+	}
+	return mime
+}
+
+func getFileChecksum(filePath string) (checksum string, err error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	hash := md5.New()
+	if _, err := io.Copy(hash, f); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
