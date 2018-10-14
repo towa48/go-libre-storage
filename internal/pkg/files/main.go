@@ -8,8 +8,8 @@ import (
 	"github.com/towa48/go-libre-storage/internal/pkg/config"
 )
 
-type FileInfo struct {
-	Id              uint64
+type DbFileInfo struct {
+	Id              int64
 	IsDir           bool
 	Name            string
 	Path            string
@@ -21,13 +21,13 @@ type FileInfo struct {
 	OwnerId         int
 }
 
-func GetPathInfo(path string, userId int, includeContent bool) []FileInfo {
-	var result []FileInfo
+func GetPathInfo(path string, userId int, includeContent bool) []DbFileInfo {
+	var result []DbFileInfo
 
 	if path == "/" {
 		// TODO: get root folder info from DB
 		time := time.Now()
-		result = append(result, FileInfo{
+		result = append(result, DbFileInfo{
 			Id:              0,
 			IsDir:           true,
 			Name:            config.Get().SystemName,
@@ -48,6 +48,26 @@ func GetPathInfo(path string, userId int, includeContent bool) []FileInfo {
 	// TODO: include folder content
 
 	return result
+}
+
+func ClearUserStorage(userId int) {
+	db, err := sql.Open("sqlite3", config.Get().FilesDb)
+	checkErr(err)
+	defer db.Close()
+
+	stmt, err := db.Prepare("delete from folders where owner_id=?;")
+	checkErr(err)
+	defer stmt.Close()
+
+	_, err = stmt.Exec(userId)
+	checkErr(err)
+
+	stmt, err = db.Prepare("delete from files where owner_id=?;")
+	checkErr(err)
+	defer stmt.Close()
+
+	_, err = stmt.Exec(userId)
+	checkErr(err)
 }
 
 func CheckDatabase() {

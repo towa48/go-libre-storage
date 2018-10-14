@@ -90,7 +90,7 @@ func parseDepth(s string) int {
 	return invalidDepth
 }
 
-func getMultistatusResponse(payload []files.FileInfo) Multistatus {
+func getMultistatusResponse(payload []files.DbFileInfo) Multistatus {
 	var responses []MultistatusResponse
 
 	for _, fi := range payload {
@@ -165,10 +165,6 @@ type FilePropStat struct {
 	ContentType      string      `xml:"d:prop>d:getcontenttype"`
 	ContentLength    string      `xml:"d:prop>d:getcontentlength"`
 	ResourceType     interface{} `xml:"d:prop>d:resourcetype"`
-}
-
-type Property struct {
-	XMLName xml.Name
 }
 
 type CollectionResourceType struct {
