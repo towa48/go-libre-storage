@@ -8,8 +8,11 @@ import (
 	"io"
 	"io/ioutil"
 	"mime"
+	"net/url"
 	"os"
 	"path"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/towa48/go-libre-storage/internal/pkg/config"
@@ -18,6 +21,7 @@ import (
 )
 
 const DefaultMimeType string = "application/octet-stream"
+const UrlSeparator string = "/"
 
 func crawl() {
 	rootFolder := config.Get().Storage
@@ -57,14 +61,15 @@ func crawlRootFolder(rootPath string) {
 				files.ClearUserStorage(id)
 
 				db := files.GetDbConnection()
-				crawlUserDirectory(db, id, path.Join(rootPath, dirName), 0)
+				crawlUserDirectory(db, id, rootPath, dirName, 0)
 			}
 		}
 	}
 }
 
-func crawlUserDirectory(db *sql.DB, userId int, dirPath string, parentId int64) {
-	items, err := ioutil.ReadDir(dirPath)
+func crawlUserDirectory(db *sql.DB, userId int, rootPath string, dirPath string, parentId int64) {
+	absPath := path.Join(rootPath, dirPath)
+	items, err := ioutil.ReadDir(absPath)
 	if err != nil {
 		db.Close()
 		fmt.Println(err)
@@ -72,37 +77,42 @@ func crawlUserDirectory(db *sql.DB, userId int, dirPath string, parentId int64) 
 	}
 
 	var fileName string
-	var filePath string
+	var fileRelPath string
+	var urlPath string
 	var modTime time.Time
 	var dbFile files.DbFileInfo
 
 	for _, fi := range items {
 		fileName = fi.Name()
 		modTime = fi.ModTime()
-		filePath = path.Join(dirPath, fileName)
+		fileRelPath = path.Join(dirPath, fileName)
+
+		urlPath = urlJoin(dirPath, fileName, fi.IsDir())
 
 		if fi.IsDir() {
 			dbFile = files.DbFileInfo{
 				IsDir:           true,
 				Name:            fileName,
+				Path:            urlPath,
 				CreatedDateUtc:  modTime,
 				ModifiedDateUtc: modTime,
 				OwnerId:         userId,
 			}
 
 			id := files.AppendFolder(db, dbFile, parentId)
-			crawlUserDirectory(db, userId, filePath, id) // recurse
+			crawlUserDirectory(db, userId, rootPath, fileRelPath, id) // recurse
 		} else {
 			mime := getFileMime(fileName)
-			etag, err := getFileChecksum(filePath)
+			etag, err := getFileChecksum(path.Join(rootPath, fileRelPath))
 			if err != nil {
-				fmt.Println("Cannot culculate file checksum "+filePath+".", err)
+				fmt.Println("Cannot culculate file checksum "+fileRelPath+".", err)
 				return
 			}
 
 			dbFile = files.DbFileInfo{
 				IsDir:           false,
 				Name:            fileName,
+				Path:            urlPath,
 				CreatedDateUtc:  modTime,
 				ModifiedDateUtc: modTime,
 				ETag:            etag,
@@ -137,4 +147,15 @@ func getFileChecksum(filePath string) (checksum string, err error) {
 		return "", err
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func urlJoin(base string, item string, isDir bool) string {
+	items := filepath.SplitList(base)
+	items = append(items, item)
+
+	result := UrlSeparator + strings.Join(items, UrlSeparator)
+	if isDir {
+		return result + UrlSeparator
+	}
+	return url.PathEscape(result)
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/towa48/go-libre-storage/internal/pkg/users"
 )
 
-const AuthUserKey = "user"
 const Realm = "Authorization Required"
 
 func WebDavBasicAuth() gin.HandlerFunc {
@@ -26,7 +25,7 @@ func WebDavBasicAuth() gin.HandlerFunc {
 		}
 
 		// set user for gin context
-		ctx.Set(AuthUserKey, user)
+		ctx.Set(gin.AuthUserKey, user)
 	}
 }
 

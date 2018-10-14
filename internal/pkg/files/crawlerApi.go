@@ -16,15 +16,15 @@ func GetDbConnection() *sql.DB {
 
 func AppendFolder(db *sql.DB, fi DbFileInfo, parentId int64) int64 {
 	// select last_insert_rowid();
-	stmt, err := db.Prepare("insert into folders (name, parent_id, created_date_utc, changed_date_utc, owner_id) values(?, ?, ?, ?, ?);")
+	stmt, err := db.Prepare("insert into folders (name, parent_id, path, created_date_utc, changed_date_utc, owner_id) values(?, ?, ?, ?, ?, ?);")
 	checkDbErr(db, err)
 	defer stmt.Close()
 
 	var result sql.Result
 	if parentId == 0 {
-		result, err = stmt.Exec(fi.Name, nil, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.OwnerId)
+		result, err = stmt.Exec(fi.Name, nil, fi.Path, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.OwnerId)
 	} else {
-		result, err = stmt.Exec(fi.Name, parentId, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.OwnerId)
+		result, err = stmt.Exec(fi.Name, parentId, fi.Path, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.OwnerId)
 	}
 	checkDbErr(db, err)
 
@@ -35,11 +35,15 @@ func AppendFolder(db *sql.DB, fi DbFileInfo, parentId int64) int64 {
 }
 
 func AppendFile(db *sql.DB, fi DbFileInfo, folderId int64) {
-	stmt, err := db.Prepare("insert into files (name, folder_id, created_date_utc, changed_date_utc, etag, mime_type, size, owner_id) values(?, ?, ?, ?, ?, ?, ?, ?);")
+	stmt, err := db.Prepare("insert into files (name, folder_id, path, created_date_utc, changed_date_utc, etag, mime_type, size, owner_id) values(?, ?, ?, ?, ?, ?, ?, ?, ?);")
 	checkDbErr(db, err)
 	defer stmt.Close()
 
-	_, err = stmt.Exec(fi.Name, folderId, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.ETag, fi.Mime, fi.Size, fi.OwnerId)
+	if folderId == 0 {
+		_, err = stmt.Exec(fi.Name, nil, fi.Path, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.ETag, fi.Mime, fi.Size, fi.OwnerId)
+	} else {
+		_, err = stmt.Exec(fi.Name, folderId, fi.Path, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.ETag, fi.Mime, fi.Size, fi.OwnerId)
+	}
 	checkDbErr(db, err)
 }
 

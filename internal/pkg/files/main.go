@@ -21,33 +21,49 @@ type DbFileInfo struct {
 	OwnerId         int
 }
 
-func GetPathInfo(path string, userId int, includeContent bool) []DbFileInfo {
+func GetFolderInfo(folderPath string, userId int, includeContent bool) (items []DbFileInfo, hasAccess bool) {
 	var result []DbFileInfo
 
-	if path == "/" {
-		// TODO: get root folder info from DB
+	db := GetDbConnection()
+	defer db.Close()
+
+	if folderPath == "/" {
 		time := time.Now()
 		result = append(result, DbFileInfo{
 			Id:              0,
 			IsDir:           true,
 			Name:            config.Get().SystemName,
-			Path:            path,
+			Path:            folderPath,
 			CreatedDateUtc:  time,
 			ModifiedDateUtc: time,
 			OwnerId:         userId,
 		})
-		return result
-	} else {
-		// TODO: add root folder info?
+
+		if includeContent {
+			content := getFolderContent(db, userId, 0)
+			for _, c := range content {
+				result = append(result, c)
+			}
+		}
+
+		return result, true
 	}
 
-	if !includeContent {
-		return result
+	folder, found := getFolderInfo(db, folderPath, userId)
+	if !found {
+		return nil, true
 	}
 
-	// TODO: include folder content
+	result = append(result, folder)
 
-	return result
+	if includeContent {
+		content := getFolderContent(db, userId, folder.Id)
+		for _, c := range content {
+			result = append(result, c)
+		}
+	}
+
+	return result, true
 }
 
 func ClearUserStorage(userId int) {
@@ -85,14 +101,14 @@ func CheckDatabase() {
 }
 
 func createFilesTable(db *sql.DB) {
-	stmt, err := db.Prepare("CREATE TABLE folders (id integer not null primary key autoincrement, name text, parent_id integer, created_date_utc datetime, changed_date_utc datetime, owner_id integer);")
+	stmt, err := db.Prepare("CREATE TABLE folders (id integer not null primary key autoincrement, name text, parent_id integer, path text, created_date_utc datetime, changed_date_utc datetime, owner_id integer);")
 	checkErr(err)
 	defer stmt.Close()
 
 	_, err = stmt.Exec()
 	checkErr(err)
 
-	stmt, err = db.Prepare("CREATE TABLE files (id integer not null primary key autoincrement, name text, folder_id integer, created_date_utc datetime, changed_date_utc datetime, etag string, mime_type string, size integer, owner_id integer);")
+	stmt, err = db.Prepare("CREATE TABLE files (id integer not null primary key autoincrement, name text, folder_id integer, path text, created_date_utc datetime, changed_date_utc datetime, etag string, mime_type string, size integer, owner_id integer);")
 	checkErr(err)
 	defer stmt.Close()
 
@@ -122,6 +138,72 @@ func createSchemaTable(db *sql.DB) {
 
 	_, err = stmt.Exec("1.0")
 	checkErr(err)
+}
+
+func getFolderContent(db *sql.DB, userId int, folderId int64) []DbFileInfo {
+	var rows *sql.Rows
+	var err error
+
+	fq := "SELECT id, name, path, created_date_utc, changed_date_utc FROM folders "
+	if folderId == 0 {
+		rows, err = db.Query(fq+"WHERE parent_id=NULL and owner_id=?;", userId)
+	} else {
+		rows, err = db.Query(fq+"WHERE parent_id=? and owner_id=?;", folderId, userId)
+	}
+	checkErr(err)
+	defer rows.Close()
+
+	var result []DbFileInfo
+	for rows.Next() {
+		it := DbFileInfo{
+			IsDir:   true,
+			OwnerId: userId,
+		}
+		err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc)
+		checkErr(err)
+
+		result = append(result, it)
+	}
+
+	ffq := "SELECT id, name, path, created_date_utc, changed_date_utc, etag, mime_type, size FROM files "
+	if folderId == 0 {
+		rows, err = db.Query(ffq+"WHERE folder_id=NULL and owner_id=?;", userId)
+	} else {
+		rows, err = db.Query(ffq+"WHERE folder_id=? and owner_id=?;", folderId, userId)
+	}
+	checkErr(err)
+	defer rows.Close()
+
+	for rows.Next() {
+		it := DbFileInfo{
+			IsDir:   false,
+			OwnerId: userId,
+		}
+		err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc, &it.ETag, &it.Mime, &it.Size)
+		checkErr(err)
+
+		result = append(result, it)
+	}
+
+	return result
+}
+
+func getFolderInfo(db *sql.DB, folderPath string, userId int) (item DbFileInfo, found bool) {
+	rows, err := db.Query("SELECT id, name, path, created_date_utc, changed_date_utc FROM folders WHERE path=? and owner_id=?;", folderPath, userId)
+	checkErr(err)
+	defer rows.Close()
+
+	var it DbFileInfo
+	var f bool
+	for rows.Next() {
+		err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc)
+		checkErr(err)
+		it.OwnerId = userId
+		f = true
+		break
+	}
+
+	return it, f
 }
 
 func checkErr(err error) {

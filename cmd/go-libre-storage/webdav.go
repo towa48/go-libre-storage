@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/towa48/go-libre-storage/internal/pkg/users"
+
 	"github.com/gin-gonic/gin"
 	"github.com/towa48/go-libre-storage/internal/pkg/files"
 )
@@ -54,7 +56,23 @@ func WebDav(r *gin.Engine) {
 		// TODO: analyze request payload
 
 		includeContent := depth == 1
-		payload := files.GetPathInfo(path, 0, includeContent)
+		login := c.MustGet(gin.AuthUserKey).(string)
+
+		user, found := users.GetUserByLogin(login)
+		if !found {
+			c.Status(http.StatusForbidden)
+			return
+		}
+
+		payload, hasAccess := files.GetFolderInfo(path, user.Id, includeContent)
+		if !hasAccess {
+			c.Status(http.StatusForbidden)
+			return
+		}
+		if hasAccess && payload == nil {
+			c.String(http.StatusNotFound, "text/plain", "Folder was deleted.")
+			return
+		}
 
 		resp := getMultistatusResponse(payload)
 
@@ -116,7 +134,7 @@ func getMultistatusResponse(payload []files.DbFileInfo) Multistatus {
 						DisplayName:      fi.Name,
 						CreationDate:     fi.CreatedDateUtc.Format(time.RFC3339),
 						LastModifiedDate: fi.ModifiedDateUtc.Format(time.RFC1123),
-						DateTag:          fi.ETag,
+						ETag:             fi.ETag,
 						ContentType:      fi.Mime,
 						ContentLength:    strconv.FormatInt(fi.Size, 10),
 					},
@@ -158,7 +176,7 @@ type DirPropStat struct {
 
 type FilePropStat struct {
 	Status           string      `xml:"d:status"`
-	DateTag          string      `xml:"d:prop>d:getetag"`
+	ETag             string      `xml:"d:prop>d:getetag"`
 	CreationDate     string      `xml:"d:prop>d:creationdate"`
 	DisplayName      string      `xml:"d:prop>d:displayname"`
 	LastModifiedDate string      `xml:"d:prop>d:getlastmodified"`
