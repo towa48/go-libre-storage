@@ -13,12 +13,12 @@ import (
 	"github.com/towa48/go-libre-storage/internal/pkg/files"
 )
 
-const Prefix string = "/webdav"
+const WebDavPrefix string = "/webdav"
 const XmlDocumentType string = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
 const WebDavStatusOk string = "HTTP/1.1 200 OK"
 
 func WebDav(r *gin.Engine) {
-	authorized := r.Group(Prefix, WebDavBasicAuth())
+	authorized := r.Group(WebDavPrefix, WebDavBasicAuth())
 
 	authorized.OPTIONS("/*path", func(c *gin.Context) {
 		path := stripPrefix(c.Request.URL.Path)
@@ -64,7 +64,7 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		payload, hasAccess := files.GetFolderInfo(path, user.Id, includeContent)
+		payload, hasAccess := files.GetFolderInfo(path, user.Id, WebDavPrefix, includeContent)
 		if !hasAccess {
 			c.Status(http.StatusForbidden)
 			return
@@ -84,7 +84,7 @@ func WebDav(r *gin.Engine) {
 }
 
 func stripPrefix(path string) string {
-	if result := strings.TrimPrefix(path, Prefix); len(result) < len(path) {
+	if result := strings.TrimPrefix(path, WebDavPrefix); len(result) < len(path) {
 		return result
 	}
 

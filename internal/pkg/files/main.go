@@ -2,6 +2,7 @@ package files
 
 import (
 	"database/sql"
+	"strings"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -21,43 +22,25 @@ type DbFileInfo struct {
 	OwnerId         int
 }
 
-func GetFolderInfo(url string, userId int, includeContent bool) (items []DbFileInfo, hasAccess bool) {
+func GetFolderInfo(url string, userId int, urlPrefix string, includeContent bool) (items []DbFileInfo, hasAccess bool) {
 	var result []DbFileInfo
 
 	db := GetDbConnection()
 	defer db.Close()
 
-	if url == "/" {
-		time := time.Now()
-		result = append(result, DbFileInfo{
-			Id:              0,
-			IsDir:           true,
-			Name:            config.Get().SystemName,
-			Path:            url,
-			CreatedDateUtc:  time,
-			ModifiedDateUtc: time,
-			OwnerId:         userId,
-		})
-
-		if includeContent {
-			content := getFolderContent(db, userId, 0)
-			for _, c := range content {
-				result = append(result, c)
-			}
-		}
-
-		return result, true
-	}
-
-	folder, found := getFolderInfo(db, url, userId)
+	folder, found := getFolderInfo(db, url, urlPrefix, userId)
 	if !found {
 		return nil, true
+	}
+
+	if url == "/" {
+		folder.Name = config.Get().SystemName
 	}
 
 	result = append(result, folder)
 
 	if includeContent {
-		content := getFolderContent(db, userId, folder.Id)
+		content := getFolderContent(db, userId, folder.Id, urlPrefix)
 		for _, c := range content {
 			result = append(result, c)
 		}
@@ -140,16 +123,8 @@ func createSchemaTable(db *sql.DB) {
 	checkErr(err)
 }
 
-func getFolderContent(db *sql.DB, userId int, folderId int64) []DbFileInfo {
-	var rows *sql.Rows
-	var err error
-
-	fq := "SELECT id, name, url, created_date_utc, changed_date_utc FROM folders "
-	if folderId == 0 {
-		rows, err = db.Query(fq+"WHERE parent_id=NULL and owner_id=?;", userId)
-	} else {
-		rows, err = db.Query(fq+"WHERE parent_id=? and owner_id=?;", folderId, userId)
-	}
+func getFolderContent(db *sql.DB, userId int, folderId int64, urlPrefix string) []DbFileInfo {
+	rows, err := db.Query("SELECT id, name, url, created_date_utc, changed_date_utc FROM folders WHERE parent_id=? and owner_id=?;", folderId, userId)
 	checkErr(err)
 	defer rows.Close()
 
@@ -162,15 +137,11 @@ func getFolderContent(db *sql.DB, userId int, folderId int64) []DbFileInfo {
 		err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc)
 		checkErr(err)
 
+		it.Path = urlJoin(urlPrefix, it.Path)
 		result = append(result, it)
 	}
 
-	ffq := "SELECT id, name, url, created_date_utc, changed_date_utc, etag, mime_type, size FROM files "
-	if folderId == 0 {
-		rows, err = db.Query(ffq+"WHERE folder_id=NULL and owner_id=?;", userId)
-	} else {
-		rows, err = db.Query(ffq+"WHERE folder_id=? and owner_id=?;", folderId, userId)
-	}
+	rows, err = db.Query("SELECT id, name, url, created_date_utc, changed_date_utc, etag, mime_type, size FROM files WHERE folder_id=? and owner_id=?;", folderId, userId)
 	checkErr(err)
 	defer rows.Close()
 
@@ -182,13 +153,14 @@ func getFolderContent(db *sql.DB, userId int, folderId int64) []DbFileInfo {
 		err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc, &it.ETag, &it.Mime, &it.Size)
 		checkErr(err)
 
+		it.Path = urlJoin(urlPrefix, it.Path)
 		result = append(result, it)
 	}
 
 	return result
 }
 
-func getFolderInfo(db *sql.DB, url string, userId int) (item DbFileInfo, found bool) {
+func getFolderInfo(db *sql.DB, url string, urlPrefix string, userId int) (item DbFileInfo, found bool) {
 	rows, err := db.Query("SELECT id, name, url, created_date_utc, changed_date_utc FROM folders WHERE url=? and owner_id=?;", url, userId)
 	checkErr(err)
 	defer rows.Close()
@@ -198,6 +170,8 @@ func getFolderInfo(db *sql.DB, url string, userId int) (item DbFileInfo, found b
 	for rows.Next() {
 		err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc)
 		checkErr(err)
+		it.Path = urlJoin(urlPrefix, it.Path)
+		it.IsDir = true
 		it.OwnerId = userId
 		f = true
 		break
@@ -210,4 +184,11 @@ func checkErr(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func urlJoin(base string, item string) string {
+	if !strings.HasSuffix(base, "/") && !strings.HasPrefix(item, "/") {
+		base = base + "/"
+	}
+	return base + item
 }
