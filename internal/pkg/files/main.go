@@ -21,19 +21,19 @@ type DbFileInfo struct {
 	OwnerId         int
 }
 
-func GetFolderInfo(folderPath string, userId int, includeContent bool) (items []DbFileInfo, hasAccess bool) {
+func GetFolderInfo(url string, userId int, includeContent bool) (items []DbFileInfo, hasAccess bool) {
 	var result []DbFileInfo
 
 	db := GetDbConnection()
 	defer db.Close()
 
-	if folderPath == "/" {
+	if url == "/" {
 		time := time.Now()
 		result = append(result, DbFileInfo{
 			Id:              0,
 			IsDir:           true,
 			Name:            config.Get().SystemName,
-			Path:            folderPath,
+			Path:            url,
 			CreatedDateUtc:  time,
 			ModifiedDateUtc: time,
 			OwnerId:         userId,
@@ -49,7 +49,7 @@ func GetFolderInfo(folderPath string, userId int, includeContent bool) (items []
 		return result, true
 	}
 
-	folder, found := getFolderInfo(db, folderPath, userId)
+	folder, found := getFolderInfo(db, url, userId)
 	if !found {
 		return nil, true
 	}
@@ -101,14 +101,14 @@ func CheckDatabase() {
 }
 
 func createFilesTable(db *sql.DB) {
-	stmt, err := db.Prepare("CREATE TABLE folders (id integer not null primary key autoincrement, name text, parent_id integer, path text, created_date_utc datetime, changed_date_utc datetime, owner_id integer);")
+	stmt, err := db.Prepare("CREATE TABLE folders (id integer not null primary key autoincrement, name text, parent_id integer, url text, created_date_utc datetime, changed_date_utc datetime, owner_id integer);")
 	checkErr(err)
 	defer stmt.Close()
 
 	_, err = stmt.Exec()
 	checkErr(err)
 
-	stmt, err = db.Prepare("CREATE TABLE files (id integer not null primary key autoincrement, name text, folder_id integer, path text, created_date_utc datetime, changed_date_utc datetime, etag string, mime_type string, size integer, owner_id integer);")
+	stmt, err = db.Prepare("CREATE TABLE files (id integer not null primary key autoincrement, name text, folder_id integer, url text, created_date_utc datetime, changed_date_utc datetime, etag string, mime_type string, size integer, owner_id integer);")
 	checkErr(err)
 	defer stmt.Close()
 
@@ -144,7 +144,7 @@ func getFolderContent(db *sql.DB, userId int, folderId int64) []DbFileInfo {
 	var rows *sql.Rows
 	var err error
 
-	fq := "SELECT id, name, path, created_date_utc, changed_date_utc FROM folders "
+	fq := "SELECT id, name, url, created_date_utc, changed_date_utc FROM folders "
 	if folderId == 0 {
 		rows, err = db.Query(fq+"WHERE parent_id=NULL and owner_id=?;", userId)
 	} else {
@@ -165,7 +165,7 @@ func getFolderContent(db *sql.DB, userId int, folderId int64) []DbFileInfo {
 		result = append(result, it)
 	}
 
-	ffq := "SELECT id, name, path, created_date_utc, changed_date_utc, etag, mime_type, size FROM files "
+	ffq := "SELECT id, name, url, created_date_utc, changed_date_utc, etag, mime_type, size FROM files "
 	if folderId == 0 {
 		rows, err = db.Query(ffq+"WHERE folder_id=NULL and owner_id=?;", userId)
 	} else {
@@ -188,8 +188,8 @@ func getFolderContent(db *sql.DB, userId int, folderId int64) []DbFileInfo {
 	return result
 }
 
-func getFolderInfo(db *sql.DB, folderPath string, userId int) (item DbFileInfo, found bool) {
-	rows, err := db.Query("SELECT id, name, path, created_date_utc, changed_date_utc FROM folders WHERE path=? and owner_id=?;", folderPath, userId)
+func getFolderInfo(db *sql.DB, url string, userId int) (item DbFileInfo, found bool) {
+	rows, err := db.Query("SELECT id, name, url, created_date_utc, changed_date_utc FROM folders WHERE url=? and owner_id=?;", url, userId)
 	checkErr(err)
 	defer rows.Close()
 

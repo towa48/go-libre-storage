@@ -16,7 +16,7 @@ func GetDbConnection() *sql.DB {
 
 func AppendFolder(db *sql.DB, fi DbFileInfo, parentId int64) int64 {
 	// select last_insert_rowid();
-	stmt, err := db.Prepare("insert into folders (name, parent_id, path, created_date_utc, changed_date_utc, owner_id) values(?, ?, ?, ?, ?, ?);")
+	stmt, err := db.Prepare("insert into folders (name, parent_id, url, created_date_utc, changed_date_utc, owner_id) values(?, ?, ?, ?, ?, ?);")
 	checkDbErr(db, err)
 	defer stmt.Close()
 
@@ -35,7 +35,7 @@ func AppendFolder(db *sql.DB, fi DbFileInfo, parentId int64) int64 {
 }
 
 func AppendFile(db *sql.DB, fi DbFileInfo, folderId int64) {
-	stmt, err := db.Prepare("insert into files (name, folder_id, path, created_date_utc, changed_date_utc, etag, mime_type, size, owner_id) values(?, ?, ?, ?, ?, ?, ?, ?, ?);")
+	stmt, err := db.Prepare("insert into files (name, folder_id, url, created_date_utc, changed_date_utc, etag, mime_type, size, owner_id) values(?, ?, ?, ?, ?, ?, ?, ?, ?);")
 	checkDbErr(db, err)
 	defer stmt.Close()
 

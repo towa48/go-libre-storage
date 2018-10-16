@@ -11,7 +11,6 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -53,22 +52,42 @@ func crawlRootFolder(rootPath string) {
 	for _, fi = range items {
 		if fi.IsDir() {
 			dirName := fi.Name()
-			id, found := users.GetUserIdByLogin(dirName)
+			userId, found := users.GetUserIdByLogin(dirName)
 			if !found {
 				fmt.Printf("Found directory for unknown account: '%s'. You should create that account first.\n", dirName)
 			} else {
 				fmt.Printf("Found directory for account: '%s'.\n", dirName)
-				files.ClearUserStorage(id)
+				files.ClearUserStorage(userId)
 
 				db := files.GetDbConnection()
-				crawlUserDirectory(db, id, rootPath, dirName, 0)
+				folderId := saveUserRootDirectory(db, userId, fi)
+				crawlUserDirectory(db, userId, rootPath, dirName, "/", folderId)
 			}
+		} else {
+			fmt.Println("Storage folder should not contain files but " + fi.Name() + " found")
 		}
 	}
 }
 
-func crawlUserDirectory(db *sql.DB, userId int, rootPath string, dirPath string, parentId int64) {
+func saveUserRootDirectory(db *sql.DB, userId int, fi os.FileInfo) int64 {
+	fileName := fi.Name()
+	modTime := fi.ModTime()
+
+	dbFile := files.DbFileInfo{
+		IsDir:           true,
+		Name:            fileName,
+		Path:            "/",
+		CreatedDateUtc:  modTime,
+		ModifiedDateUtc: modTime,
+		OwnerId:         userId,
+	}
+
+	return files.AppendFolder(db, dbFile, 0)
+}
+
+func crawlUserDirectory(db *sql.DB, userId int, rootPath string, dirPath string, url string, parentId int64) {
 	absPath := path.Join(rootPath, dirPath)
+
 	items, err := ioutil.ReadDir(absPath)
 	if err != nil {
 		db.Close()
@@ -87,7 +106,7 @@ func crawlUserDirectory(db *sql.DB, userId int, rootPath string, dirPath string,
 		modTime = fi.ModTime()
 		fileRelPath = path.Join(dirPath, fileName)
 
-		urlPath = urlJoin(dirPath, fileName, fi.IsDir())
+		urlPath = urlJoin(url, fileName, fi.IsDir())
 
 		if fi.IsDir() {
 			dbFile = files.DbFileInfo{
@@ -100,7 +119,7 @@ func crawlUserDirectory(db *sql.DB, userId int, rootPath string, dirPath string,
 			}
 
 			id := files.AppendFolder(db, dbFile, parentId)
-			crawlUserDirectory(db, userId, rootPath, fileRelPath, id) // recurse
+			crawlUserDirectory(db, userId, rootPath, fileRelPath, urlPath, id) // recurse
 		} else {
 			mime := getFileMime(fileName)
 			etag, err := getFileChecksum(path.Join(rootPath, fileRelPath))
@@ -150,12 +169,14 @@ func getFileChecksum(filePath string) (checksum string, err error) {
 }
 
 func urlJoin(base string, item string, isDir bool) string {
-	items := filepath.SplitList(base)
-	items = append(items, item)
+	if !strings.HasSuffix(base, UrlSeparator) {
+		base = base + UrlSeparator
+	}
 
-	result := UrlSeparator + strings.Join(items, UrlSeparator)
-	if isDir {
+	result := base + url.PathEscape(item)
+
+	if isDir && !strings.HasSuffix(result, UrlSeparator) {
 		return result + UrlSeparator
 	}
-	return url.PathEscape(result)
+	return result
 }
