@@ -22,6 +22,15 @@ type DbFileInfo struct {
 	OwnerId         int
 }
 
+type DbHierarchyItem struct {
+	Id       int64
+	IsDir    bool
+	Name     string
+	OwnerId  int
+	ParentId *int64
+	Child    *DbHierarchyItem
+}
+
 func GetFolderInfo(url string, userId int, urlPrefix string, includeContent bool) (items []DbFileInfo, hasAccess bool) {
 	var result []DbFileInfo
 
@@ -47,6 +56,60 @@ func GetFolderInfo(url string, userId int, urlPrefix string, includeContent bool
 	}
 
 	return result, true
+}
+
+func GetFileInfo(url string, userId int, urlPrefix string) (file DbFileInfo, hasAccess bool) {
+	db := GetDbConnection()
+	defer db.Close()
+
+	file, found := getFileInfo(db, url, urlPrefix, userId)
+	if !found {
+		return file, true
+	}
+
+	return file, true
+}
+
+func GetFileHierarchy(fileId int64) (root DbHierarchyItem, found bool) {
+	db, err := sql.Open("sqlite3", config.Get().FilesDb)
+	checkErr(err)
+	defer db.Close()
+
+	rows, err := db.Query("SELECT id, name, owner_id, folder_id FROM files WHERE id=?;", fileId)
+	checkErr(err)
+	defer rows.Close()
+
+	var it DbHierarchyItem
+	var f bool
+	for rows.Next() {
+		err = rows.Scan(&it.Id, &it.Name, &it.OwnerId, &it.ParentId)
+		checkErr(err)
+		f = true
+		break
+	}
+
+	if !f {
+		return it, f
+	}
+
+	rows, err = db.Query("with t as (select id, name, owner_id, parent_id from folders where id=? union all select f.id, f.name, f.owner_id, f.parent_id from t join folders as f on f.id = t.parent_id) select t.id, t.name, t.owner_id, t.parent_id from t;", *it.ParentId)
+	checkErr(err)
+	defer rows.Close()
+
+	var folders []DbHierarchyItem
+	for rows.Next() {
+		var folder DbHierarchyItem
+		err = rows.Scan(&folder.Id, &folder.Name, &folder.OwnerId, &folder.ParentId)
+		folder.IsDir = true
+
+		folders = append(folders, folder)
+		checkErr(err)
+	}
+
+	//fmt.Println("Folders count:", len(folders))
+	r := buildHierarchy(folders, it)
+
+	return r, true
 }
 
 func ClearUserStorage(userId int) {
@@ -160,6 +223,25 @@ func getFolderContent(db *sql.DB, userId int, folderId int64, urlPrefix string) 
 	return result
 }
 
+func getFileInfo(db *sql.DB, url string, urlPrefix string, userId int) (item DbFileInfo, found bool) {
+	rows, err := db.Query("SELECT id, name, url, created_date_utc, changed_date_utc, etag, mime_type, size FROM files WHERE url=? and owner_id=?;", url, userId)
+	checkErr(err)
+	defer rows.Close()
+
+	var it DbFileInfo
+	var f bool
+	for rows.Next() {
+		err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc, &it.ETag, &it.Mime, &it.Size)
+		checkErr(err)
+		it.Path = urlJoin(urlPrefix, it.Path)
+		it.OwnerId = userId
+		f = true
+		break
+	}
+
+	return it, f
+}
+
 func getFolderInfo(db *sql.DB, url string, urlPrefix string, userId int) (item DbFileInfo, found bool) {
 	rows, err := db.Query("SELECT id, name, url, created_date_utc, changed_date_utc FROM folders WHERE url=? and owner_id=?;", url, userId)
 	checkErr(err)
@@ -178,6 +260,40 @@ func getFolderInfo(db *sql.DB, url string, urlPrefix string, userId int) (item D
 	}
 
 	return it, f
+}
+
+func buildHierarchy(folders []DbHierarchyItem, file DbHierarchyItem) DbHierarchyItem {
+	var m = map[int64]*DbHierarchyItem{}
+
+	for _, f := range folders {
+		node := f
+		m[f.Id] = &node
+	}
+
+	var root *DbHierarchyItem
+	for _, f := range m {
+		node := f
+
+		if node.ParentId == nil {
+			root = node
+			continue
+		}
+
+		parent, found := m[*node.ParentId]
+		if !found {
+			continue
+		}
+
+		parent.Child = node
+	}
+
+	// assign file
+	parent, found := m[*file.ParentId]
+	if found {
+		parent.Child = &file
+	}
+
+	return *root
 }
 
 func checkErr(err error) {

@@ -2,10 +2,15 @@ package main
 
 import (
 	"encoding/xml"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/towa48/go-libre-storage/internal/pkg/config"
 
 	"github.com/towa48/go-libre-storage/internal/pkg/users"
 
@@ -33,7 +38,47 @@ func WebDav(r *gin.Engine) {
 	})
 
 	authorized.Handle("GET", "/*path", func(c *gin.Context) {
-		c.Status(403)
+		path := stripPrefix(c.Request.URL.Path)
+
+		login := c.MustGet(gin.AuthUserKey).(string)
+		user, found := users.GetUserByLogin(login)
+		if !found {
+			c.Status(http.StatusForbidden)
+			return
+		}
+
+		fi, hasAccess := files.GetFileInfo(path, user.Id, WebDavPrefix)
+		if !hasAccess {
+			c.Status(http.StatusForbidden)
+			return
+		}
+		if fi.IsDir {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		filePathRoot, found := files.GetFileHierarchy(fi.Id)
+		if !found {
+			fmt.Printf("File %d path not found\n", fi.Id)
+			c.String(http.StatusInternalServerError, "Internal server error")
+			return
+		}
+
+		filePath := buildFilePath(filePathRoot)
+		fmt.Println(filePath)
+
+		file, err := os.Open(filePath)
+		if err != nil {
+			c.String(http.StatusInternalServerError, "%v", err)
+			return
+		}
+		defer file.Close()
+
+		c.Header("Content-Type", fi.Mime)
+		c.Header("ETag", fi.ETag)
+		c.Header("Last-Modified", fi.ModifiedDateUtc.Format(time.RFC1123))
+
+		io.Copy(c.Writer, file)
 	})
 
 	authorized.Handle("PROPFIND", "/*path", func(c *gin.Context) {
@@ -89,6 +134,23 @@ func stripPrefix(path string) string {
 	}
 
 	return path
+}
+
+func buildFilePath(root files.DbHierarchyItem) string {
+	separator := string(os.PathSeparator)
+
+	result := config.Get().Storage
+	if !strings.HasSuffix(result, separator) {
+		result = result + separator
+	}
+
+	item := root
+	for item.Child != nil {
+		result = result + item.Name + separator
+		item = *item.Child
+	}
+
+	return result + item.Name
 }
 
 const (
