@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"mime"
 	"net/url"
 	"os"
 	"path"
@@ -16,10 +15,10 @@ import (
 
 	"github.com/towa48/go-libre-storage/internal/pkg/config"
 	"github.com/towa48/go-libre-storage/internal/pkg/files"
+	"github.com/towa48/go-libre-storage/internal/pkg/mimedb"
 	"github.com/towa48/go-libre-storage/internal/pkg/users"
 )
 
-const DefaultMimeType string = "application/octet-stream"
 const UrlSeparator string = "/"
 
 func crawl() {
@@ -147,11 +146,8 @@ func crawlUserDirectory(db *sql.DB, userId int, rootPath string, dirPath string,
 
 func getFileMime(fileName string) string {
 	ext := path.Ext(fileName)
-	mime := mime.TypeByExtension(ext)
-	if mime == "" {
-		mime = DefaultMimeType
-	}
-	return mime
+	t, _ := mimedb.TypeByExtension(ext)
+	return t
 }
 
 func getFileChecksum(filePath string) (checksum string, err error) {
