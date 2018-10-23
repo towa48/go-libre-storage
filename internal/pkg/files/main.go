@@ -39,7 +39,7 @@ func GetFolderInfo(url string, userId int, urlPrefix string, includeContent bool
 
 	folder, found := getFolderInfo(db, url, urlPrefix, userId)
 	if !found {
-		return nil, true
+		return nil, false
 	}
 
 	if url == "/" {

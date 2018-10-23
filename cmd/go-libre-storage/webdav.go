@@ -126,6 +126,62 @@ func WebDav(r *gin.Engine) {
 		c.Writer.Write([]byte(XmlDocumentType))
 		c.XML(httpStatus, resp)
 	})
+
+	authorized.Handle("MKCOL", "/*path", func(c *gin.Context) {
+		path := stripPrefix(c.Request.URL.Path)
+
+		login := c.MustGet(gin.AuthUserKey).(string)
+		user, found := users.GetUserByLogin(login)
+		if !found {
+			c.Status(http.StatusForbidden)
+			return
+		}
+
+		separator := string(os.PathSeparator)
+		dir := config.Get().Storage
+
+		if !strings.HasSuffix(dir, separator) {
+			dir = dir + separator
+		}
+
+		if !strings.HasPrefix(path, "/") {
+			path = "/" + path
+		}
+
+		dir = dir + login + path
+
+		err := os.MkdirAll(dir, os.ModePerm)
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		root := parseUrl(path)
+		eRoot, parentId, found := getFirstUnknownFolder(root, user.Id)
+
+		if !found {
+			c.Status(http.StatusBadRequest)
+			return
+		}
+
+		db := files.GetDbConnection()
+		defer db.Close()
+
+		t := time.Now()
+		for eRoot != nil {
+			fi := files.DbFileInfo{
+				Name:            eRoot.Name,
+				Path:            eRoot.Url,
+				CreatedDateUtc:  t,
+				ModifiedDateUtc: t,
+				OwnerId:         user.Id,
+			}
+			parentId = files.AppendFolder(db, fi, parentId)
+			eRoot = eRoot.Child
+		}
+
+		c.String(http.StatusCreated, "")
+	})
 }
 
 func stripPrefix(path string) string {
@@ -151,6 +207,68 @@ func buildFilePath(root files.DbHierarchyItem) string {
 	}
 
 	return result + item.Name
+}
+
+func parseUrl(url string) *UrlHierarchyItem {
+	p := url
+	i := strings.Index(p, UrlSeparator)
+
+	root := &UrlHierarchyItem{
+		Url:   "/",
+		IsDir: true,
+	}
+	prev := root
+
+	for i != -1 {
+		if i == 0 {
+			p = strings.TrimPrefix(p, UrlSeparator)
+		}
+
+		i = strings.Index(p, UrlSeparator)
+		var next *UrlHierarchyItem
+		if i > 0 {
+			name := p[0:i]
+			next = &UrlHierarchyItem{
+				Name:  name,
+				Url:   prev.Url + name + UrlSeparator,
+				IsDir: true,
+			}
+			p = strings.TrimPrefix(p, name)
+		} else if i == -1 && len(p) > 0 {
+			next = &UrlHierarchyItem{
+				Name: p,
+				Url:  prev.Url + p,
+			}
+		}
+
+		if next != nil {
+			prev.Child = next
+			prev = next
+		}
+	}
+
+	return root
+}
+
+func getFirstUnknownFolder(root *UrlHierarchyItem, userId int) (folder *UrlHierarchyItem, parentId int64, found bool) {
+	var pid int64
+	var result bool
+	for root != nil {
+		fi, fo := files.GetFolderInfo(root.Url, userId, WebDavPrefix, false)
+		if !fo {
+			break
+		}
+
+		result = true
+		pid = fi[0].Id
+		root = root.Child
+	}
+
+	if !result {
+		return nil, pid, result
+	}
+
+	return root, pid, result
 }
 
 const (
@@ -250,4 +368,11 @@ type FilePropStat struct {
 type CollectionResourceType struct {
 	XMLName   xml.Name `xml:"d:resourcetype"`
 	FakeValue string   `xml:"d:collection"`
+}
+
+type UrlHierarchyItem struct {
+	Name  string
+	IsDir bool
+	Url   string
+	Child *UrlHierarchyItem
 }
