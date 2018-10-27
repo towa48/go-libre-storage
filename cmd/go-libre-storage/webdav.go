@@ -43,33 +43,33 @@ func WebDav(r *gin.Engine) {
 		login := c.MustGet(gin.AuthUserKey).(string)
 		user, found := users.GetUserByLogin(login)
 		if !found {
-			c.Status(http.StatusForbidden)
+			forbiddenResult(c)
 			return
 		}
 
 		fi, hasAccess := files.GetFileInfo(path, user.Id, WebDavPrefix)
 		if !hasAccess {
-			c.Status(http.StatusForbidden)
+			forbiddenResult(c)
 			return
 		}
 		if fi.IsDir {
-			c.Status(http.StatusBadRequest)
+			badRequestResult(c)
 			return
 		}
 
 		filePathRoot, found := files.GetFileHierarchy(fi.Id)
 		if !found {
 			fmt.Printf("File %d path not found\n", fi.Id)
-			c.String(http.StatusInternalServerError, "Internal server error")
+			serverErrorResult(c)
 			return
 		}
 
 		filePath := buildFilePath(filePathRoot)
-		fmt.Println(filePath)
+		//fmt.Println(filePath)
 
 		file, err := os.Open(filePath)
 		if err != nil {
-			c.String(http.StatusInternalServerError, "%v", err)
+			serverErrorResult(c)
 			return
 		}
 		defer file.Close()
@@ -86,13 +86,13 @@ func WebDav(r *gin.Engine) {
 		depth := parseDepth(c.Request.Header.Get("Depth"))
 
 		if depth == invalidDepth || depth == infiniteDepth {
-			c.Status(http.StatusBadRequest)
+			badRequestResult(c)
 			return
 		}
 
 		data, err := c.GetRawData()
 		if err != nil {
-			c.Status(http.StatusBadRequest)
+			badRequestResult(c)
 			return
 		}
 
@@ -105,17 +105,13 @@ func WebDav(r *gin.Engine) {
 
 		user, found := users.GetUserByLogin(login)
 		if !found {
-			c.Status(http.StatusForbidden)
+			forbiddenResult(c)
 			return
 		}
 
 		payload, hasAccess := files.GetFolderContent(path, user.Id, WebDavPrefix, includeContent)
-		if !hasAccess {
-			c.Status(http.StatusForbidden)
-			return
-		}
-		if hasAccess && payload == nil {
-			c.String(http.StatusNotFound, "text/plain", "Folder was deleted.")
+		if !hasAccess || payload == nil {
+			noFoundResult(c)
 			return
 		}
 
@@ -133,7 +129,7 @@ func WebDav(r *gin.Engine) {
 		login := c.MustGet(gin.AuthUserKey).(string)
 		user, found := users.GetUserByLogin(login)
 		if !found {
-			c.Status(http.StatusForbidden)
+			forbiddenResult(c)
 			return
 		}
 
@@ -141,7 +137,7 @@ func WebDav(r *gin.Engine) {
 
 		err := os.MkdirAll(dir, os.ModePerm)
 		if err != nil {
-			c.Status(http.StatusInternalServerError)
+			serverErrorResult(c)
 			return
 		}
 
@@ -149,7 +145,7 @@ func WebDav(r *gin.Engine) {
 		eRoot, parentId, found := getFirstUnknownFolder(root, user.Id)
 
 		if !found {
-			c.Status(http.StatusBadRequest)
+			badRequestResult(c)
 			return
 		}
 
@@ -178,7 +174,7 @@ func WebDav(r *gin.Engine) {
 		login := c.MustGet(gin.AuthUserKey).(string)
 		user, found := users.GetUserByLogin(login)
 		if !found {
-			c.Status(http.StatusForbidden)
+			forbiddenResult(c)
 			return
 		}
 
@@ -187,14 +183,14 @@ func WebDav(r *gin.Engine) {
 		if isFolder {
 			fi, found := files.GetFolderInfo(path, user.Id)
 			if !found {
-				c.String(http.StatusBadRequest, "")
+				badRequestResult(c)
 				return
 			}
 
 			fsp := getFileSystemPath(path, user)
 			err := os.RemoveAll(fsp)
 			if err != nil {
-				c.Status(http.StatusInternalServerError)
+				serverErrorResult(c)
 				return
 			}
 
@@ -205,20 +201,36 @@ func WebDav(r *gin.Engine) {
 
 		fi, found := files.GetFileInfo(path, user.Id, WebDavPrefix)
 		if !found {
-			c.String(http.StatusBadRequest, "")
+			badRequestResult(c)
 			return
 		}
 
 		fsp := getFileSystemPath(path, user)
 		err := os.RemoveAll(fsp)
 		if err != nil {
-			c.Status(http.StatusInternalServerError)
+			serverErrorResult(c)
 			return
 		}
 
 		files.RemoveFile(fi.Id)
 		c.Status(http.StatusNoContent)
 	})
+}
+
+func forbiddenResult(c *gin.Context) {
+	c.String(http.StatusForbidden, "Resource access forbidden")
+}
+
+func noFoundResult(c *gin.Context) {
+	c.String(http.StatusNotFound, "Resource not found")
+}
+
+func serverErrorResult(c *gin.Context) {
+	c.String(http.StatusInternalServerError, "Server error occured")
+}
+
+func badRequestResult(c *gin.Context) {
+	c.String(http.StatusBadRequest, "Bad request")
 }
 
 func stripPrefix(path string) string {
