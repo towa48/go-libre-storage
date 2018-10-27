@@ -109,7 +109,7 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		payload, hasAccess := files.GetFolderInfo(path, user.Id, WebDavPrefix, includeContent)
+		payload, hasAccess := files.GetFolderContent(path, user.Id, WebDavPrefix, includeContent)
 		if !hasAccess {
 			c.Status(http.StatusForbidden)
 			return
@@ -137,18 +137,7 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		separator := string(os.PathSeparator)
-		dir := config.Get().Storage
-
-		if !strings.HasSuffix(dir, separator) {
-			dir = dir + separator
-		}
-
-		if !strings.HasPrefix(path, "/") {
-			path = "/" + path
-		}
-
-		dir = dir + login + path
+		dir := getFileSystemPath(path, user)
 
 		err := os.MkdirAll(dir, os.ModePerm)
 		if err != nil {
@@ -182,10 +171,62 @@ func WebDav(r *gin.Engine) {
 
 		c.String(http.StatusCreated, "")
 	})
+
+	authorized.DELETE("/*path", func(c *gin.Context) {
+		path := stripPrefix(c.Request.URL.Path)
+
+		login := c.MustGet(gin.AuthUserKey).(string)
+		user, found := users.GetUserByLogin(login)
+		if !found {
+			c.Status(http.StatusForbidden)
+			return
+		}
+
+		isFolder := strings.HasSuffix(path, UrlSeparator)
+
+		if isFolder {
+			fi, found := files.GetFolderInfo(path, user.Id)
+			if !found {
+				c.String(http.StatusBadRequest, "")
+				return
+			}
+
+			fsp := getFileSystemPath(path, user)
+			err := os.RemoveAll(fsp)
+			if err != nil {
+				c.Status(http.StatusInternalServerError)
+				return
+			}
+
+			files.RemoveFolder(fi.Id)
+			c.Status(http.StatusNoContent)
+			return
+		}
+
+		fi, found := files.GetFileInfo(path, user.Id, WebDavPrefix)
+		if !found {
+			c.String(http.StatusBadRequest, "")
+			return
+		}
+
+		fsp := getFileSystemPath(path, user)
+		err := os.RemoveAll(fsp)
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
+			return
+		}
+
+		files.RemoveFile(fi.Id)
+		c.Status(http.StatusNoContent)
+	})
 }
 
 func stripPrefix(path string) string {
 	if result := strings.TrimPrefix(path, WebDavPrefix); len(result) < len(path) {
+		if !strings.HasPrefix(result, "/") {
+			return "/" + result
+		}
+
 		return result
 	}
 
@@ -207,6 +248,21 @@ func buildFilePath(root files.DbHierarchyItem) string {
 	}
 
 	return result + item.Name
+}
+
+func getFileSystemPath(url string, user users.User) string {
+	separator := string(os.PathSeparator)
+	r := config.Get().Storage
+
+	if !strings.HasSuffix(r, separator) {
+		r = r + separator
+	}
+
+	if !strings.HasPrefix(url, UrlSeparator) {
+		url = UrlSeparator + url
+	}
+
+	return r + user.Login + url
 }
 
 func parseUrl(url string) *UrlHierarchyItem {
@@ -254,13 +310,13 @@ func getFirstUnknownFolder(root *UrlHierarchyItem, userId int) (folder *UrlHiera
 	var pid int64
 	var result bool
 	for root != nil {
-		fi, fo := files.GetFolderInfo(root.Url, userId, WebDavPrefix, false)
+		fi, fo := files.GetFolderInfo(root.Url, userId)
 		if !fo {
 			break
 		}
 
 		result = true
-		pid = fi[0].Id
+		pid = fi.Id
 		root = root.Child
 	}
 

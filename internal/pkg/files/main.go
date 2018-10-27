@@ -2,6 +2,7 @@ package files
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 	"time"
 
@@ -31,7 +32,7 @@ type DbHierarchyItem struct {
 	Child    *DbHierarchyItem
 }
 
-func GetFolderInfo(url string, userId int, urlPrefix string, includeContent bool) (items []DbFileInfo, hasAccess bool) {
+func GetFolderContent(url string, userId int, urlPrefix string, includeContent bool) (items []DbFileInfo, hasAccess bool) {
 	var result []DbFileInfo
 
 	db := GetDbConnection()
@@ -56,6 +57,14 @@ func GetFolderInfo(url string, userId int, urlPrefix string, includeContent bool
 	}
 
 	return result, true
+}
+
+func GetFolderInfo(url string, userId int) (item *DbFileInfo, hasAccess bool) {
+	c, f := GetFolderContent(url, userId, "", false)
+	if !f {
+		return nil, false
+	}
+	return &c[0], true
 }
 
 func GetFileInfo(url string, userId int, urlPrefix string) (file DbFileInfo, hasAccess bool) {
@@ -112,6 +121,32 @@ func GetFileHierarchy(fileId int64) (root DbHierarchyItem, found bool) {
 	return r, true
 }
 
+func RemoveFolder(folderId int64) {
+	db, err := sql.Open("sqlite3", config.Get().FilesDb)
+	checkErr(err)
+	defer db.Close()
+
+	stmt, err := db.Prepare("delete from folders where id=?;")
+	checkErr(err)
+	defer stmt.Close()
+
+	_, err = stmt.Exec(folderId)
+	checkErr(err)
+}
+
+func RemoveFile(fileId int64) {
+	db, err := sql.Open("sqlite3", config.Get().FilesDb)
+	checkErr(err)
+	defer db.Close()
+
+	stmt, err := db.Prepare("delete from files where id=?;")
+	checkErr(err)
+	defer stmt.Close()
+
+	_, err = stmt.Exec(fileId)
+	checkErr(err)
+}
+
 func ClearUserStorage(userId int) {
 	db, err := sql.Open("sqlite3", config.Get().FilesDb)
 	checkErr(err)
@@ -138,23 +173,25 @@ func CheckDatabase() {
 	defer db.Close()
 
 	if !isTableExists(db, "schema") {
-		createSchemaTable(db)
+		fmt.Println("Creating DB schema table")
+		createSchemaTable(db, "1.1")
 	}
 
 	if !isTableExists(db, "files") {
+		fmt.Println("Creating DB filesystem tables")
 		createFilesTable(db)
 	}
 }
 
 func createFilesTable(db *sql.DB) {
-	stmt, err := db.Prepare("CREATE TABLE folders (id integer not null primary key autoincrement, name text, parent_id integer, url text, created_date_utc datetime, changed_date_utc datetime, owner_id integer);")
+	stmt, err := db.Prepare("CREATE TABLE folders (id integer not null primary key autoincrement, name text, parent_id integer references id on delete cascade, url text, created_date_utc datetime, changed_date_utc datetime, owner_id integer);")
 	checkErr(err)
 	defer stmt.Close()
 
 	_, err = stmt.Exec()
 	checkErr(err)
 
-	stmt, err = db.Prepare("CREATE TABLE files (id integer not null primary key autoincrement, name text, folder_id integer, url text, created_date_utc datetime, changed_date_utc datetime, etag string, mime_type string, size integer, owner_id integer);")
+	stmt, err = db.Prepare("CREATE TABLE files (id integer not null primary key autoincrement, name text, folder_id integer references folders(id) on delete cascade, url text, created_date_utc datetime, changed_date_utc datetime, etag string, mime_type string, size integer, owner_id integer);")
 	checkErr(err)
 	defer stmt.Close()
 
@@ -170,7 +207,7 @@ func isTableExists(db *sql.DB, name string) bool {
 	return count == 1
 }
 
-func createSchemaTable(db *sql.DB) {
+func createSchemaTable(db *sql.DB, version string) {
 	stmt, err := db.Prepare("CREATE TABLE schema (id integer not null primary key autoincrement, version text);")
 	checkErr(err)
 	defer stmt.Close()
@@ -182,7 +219,7 @@ func createSchemaTable(db *sql.DB) {
 	checkErr(err)
 	defer stmt.Close()
 
-	_, err = stmt.Exec("1.0")
+	_, err = stmt.Exec(version)
 	checkErr(err)
 }
 
