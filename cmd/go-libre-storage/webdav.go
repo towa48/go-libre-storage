@@ -31,15 +31,15 @@ func WebDav(r *gin.Engine) {
 	authorized.OPTIONS("/*path", func(c *gin.Context) {
 		u := stripPrefix(c.Request.URL.Path)
 		if u == "/" {
-			c.Header("Allow", "OPTIONS, GET, PUT, DELETE, MKCOL, PROPFIND")
+			c.Header("Allow", "OPTIONS, GET, HEAD, PUT, DELETE, MKCOL, PROPFIND")
 		} else {
 			// TBD
-			c.Header("Allow", "OPTIONS, GET, PUT, DELETE, MKCOL, PROPFIND")
+			c.Header("Allow", "OPTIONS, GET, HEAD, PUT, DELETE, MKCOL, PROPFIND")
 		}
 
 		c.Header("DAV", "1, 2")
 		c.Header("MS-Author-Via", "DAV")
-		c.String(http.StatusOK, "")
+		c.String(http.StatusOK, EmptyString)
 	})
 
 	authorized.Handle("GET", "/*path", func(c *gin.Context) {
@@ -92,6 +92,36 @@ func WebDav(r *gin.Engine) {
 		c.Header("Last-Modified", fi.ModifiedDateUtc.Format(time.RFC1123))
 
 		io.Copy(c.Writer, file)
+	})
+
+	authorized.HEAD("/*path", func(c *gin.Context) {
+		u := stripPrefix(c.Request.URL.Path)
+		decodedUrl, err := decodePath(u)
+		encodedUrl := encodePath(decodedUrl)
+
+		if err != nil {
+			fmt.Printf("Bad url format: %s\n", u)
+			badRequestResult(c)
+			return
+		}
+
+		login := c.MustGet(gin.AuthUserKey).(string)
+		user, found := users.GetUserByLogin(login)
+		if !found {
+			forbiddenResult(c)
+			return
+		}
+
+		fi, found := files.GetFileInfo(encodedUrl, user.Id, WebDavPrefix)
+		if !found {
+			forbiddenResult(c)
+			return
+		}
+
+		c.Header("Content-Type", fi.Mime)
+		c.Header("ETag", fi.ETag)
+		c.Header("Last-Modified", fi.ModifiedDateUtc.Format(time.RFC1123))
+		c.Header("Content-Length", string(fi.Size))
 	})
 
 	authorized.Handle("PROPFIND", "/*path", func(c *gin.Context) {
@@ -195,7 +225,7 @@ func WebDav(r *gin.Engine) {
 			eRoot = eRoot.Child
 		}
 
-		c.String(http.StatusCreated, "")
+		c.String(http.StatusCreated, EmptyString)
 	})
 
 	authorized.DELETE("/*path", func(c *gin.Context) {
@@ -301,7 +331,7 @@ func WebDav(r *gin.Engine) {
 		fi, fileExists := files.GetFileInfo(encodedUrl, user.Id, WebDavPrefix)
 		if fileExists {
 			if ctype == fi.Mime && etag == fi.ETag && bytes == fi.Size {
-				c.String(http.StatusCreated, "")
+				c.String(http.StatusCreated, EmptyString)
 				return
 			}
 		}
@@ -371,7 +401,7 @@ func WebDav(r *gin.Engine) {
 		}
 		files.AppendFile(db, dfi, fi2.Id)
 
-		c.String(http.StatusCreated, "")
+		c.String(http.StatusCreated, EmptyString)
 		// TODO:
 		//100 Continue
 		//507 Insufficient Storage
