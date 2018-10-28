@@ -326,6 +326,8 @@ func WebDav(r *gin.Engine) {
 			files.RemoveFile(fi.Id)
 		}
 		files.AppendFile(db, dfi, fi2.Id)
+
+		c.String(http.StatusCreated, "")
 		// TODO:
 		//100 Continue
 		//507 Insufficient Storage
