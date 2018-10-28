@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"path"
 	"strconv"
@@ -171,7 +172,15 @@ func WebDav(r *gin.Engine) {
 	})
 
 	authorized.DELETE("/*path", func(c *gin.Context) {
-		path := stripPrefix(c.Request.URL.Path)
+		u := stripPrefix(c.Request.URL.Path)
+		decodedUrl, err := url.PathUnescape(u)
+		encodedUrl := encodePath(decodedUrl)
+
+		if err != nil {
+			fmt.Printf("Bad url format: %s\n", u)
+			badRequestResult(c)
+			return
+		}
 
 		login := c.MustGet(gin.AuthUserKey).(string)
 		user, found := users.GetUserByLogin(login)
@@ -180,16 +189,16 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		isFolder := strings.HasSuffix(path, UrlSeparator)
+		isFolder := strings.HasSuffix(decodedUrl, UrlSeparator)
 
 		if isFolder {
-			fi, found := files.GetFolderInfo(path, user.Id)
+			fi, found := files.GetFolderInfo(encodedUrl, user.Id)
 			if !found {
 				badRequestResult(c)
 				return
 			}
 
-			fsp := getFileSystemPath(path, user)
+			fsp := getFileSystemPath(decodedUrl, user)
 			err := os.RemoveAll(fsp)
 			if err != nil {
 				serverErrorResult(c)
@@ -201,14 +210,14 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		fi, found := files.GetFileInfo(path, user.Id, WebDavPrefix)
+		fi, found := files.GetFileInfo(encodedUrl, user.Id, WebDavPrefix)
 		if !found {
 			badRequestResult(c)
 			return
 		}
 
-		fsp := getFileSystemPath(path, user)
-		err := os.RemoveAll(fsp)
+		fsp := getFileSystemPath(decodedUrl, user)
+		err = os.RemoveAll(fsp)
 		if err != nil {
 			serverErrorResult(c)
 			return
@@ -219,10 +228,21 @@ func WebDav(r *gin.Engine) {
 	})
 
 	authorized.PUT("/*path", func(c *gin.Context) {
-		url := stripPrefix(c.Request.URL.Path)
+		u := stripPrefix(c.Request.URL.Path)
+		decodedUrl, err := url.PathUnescape(u)
+		encodedUrl := encodePath(decodedUrl)
 
-		if strings.HasSuffix(url, UrlSeparator) {
-			fmt.Printf("File url has folder suffix: %s\n", url)
+		if err != nil {
+			fmt.Printf("Bad url format: %s\n", u)
+			badRequestResult(c)
+			return
+		}
+
+		fileName := path.Base(decodedUrl)
+		urlFolder := getPathDir(encodedUrl)
+
+		if strings.HasSuffix(u, UrlSeparator) {
+			fmt.Printf("File url has folder suffix: %s\n", u)
 			badRequestResult(c)
 			return
 		}
@@ -238,10 +258,9 @@ func WebDav(r *gin.Engine) {
 		etag := c.Request.Header.Get("Etag")
 		cl := c.Request.Header.Get("Content-Length")
 		t := time.Now()
-		fsp := getFileSystemPath(url, user)
+		fsp := getFileSystemPath(decodedUrl, user)
 
 		var bytes int64 = 0
-		var err error
 		if cl != EmptyString {
 			bytes, err = strconv.ParseInt(cl, 10, 64)
 			if err != nil {
@@ -252,7 +271,7 @@ func WebDav(r *gin.Engine) {
 		}
 
 		// check file exists
-		fi, fileExists := files.GetFileInfo(url, user.Id, WebDavPrefix)
+		fi, fileExists := files.GetFileInfo(encodedUrl, user.Id, WebDavPrefix)
 		if fileExists {
 			if ctype == fi.Mime && etag == fi.ETag && bytes == fi.Size {
 				c.String(http.StatusCreated, "")
@@ -261,11 +280,9 @@ func WebDav(r *gin.Engine) {
 		}
 
 		// check folder exists
-		fileName := path.Base(url)
-		folder := getPathDir(url)
-		fi2, found := files.GetFolderInfo(folder, user.Id)
+		fi2, found := files.GetFolderInfo(urlFolder, user.Id)
 		if !found {
-			fmt.Printf("Folder %s does not exists\n", folder)
+			fmt.Printf("Folder %s does not exists\n", urlFolder)
 			badRequestResult(c)
 			return
 		}
@@ -313,7 +330,7 @@ func WebDav(r *gin.Engine) {
 		db := files.GetDbConnection()
 		dfi := files.DbFileInfo{
 			Name:            fileName,
-			Path:            url,
+			Path:            encodedUrl,
 			ETag:            etag,
 			Mime:            ctype,
 			Size:            bytes,
@@ -377,6 +394,12 @@ func getPathDir(url string) string {
 	}
 
 	return p
+}
+
+func encodePath(val string) string {
+	u := url.PathEscape(val)
+	u = strings.Replace(u, "%2F", UrlSeparator, -1)
+	return u
 }
 
 func buildFilePath(root files.DbHierarchyItem) string {
