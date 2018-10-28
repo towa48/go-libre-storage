@@ -515,6 +515,34 @@ func getFileSystemPath(url string, user users.User) string {
 	return r + user.Login + url
 }
 
+func createUserRoot(userId int, login string) {
+	separator := string(os.PathSeparator)
+	root := config.Get().Storage
+	if !strings.HasSuffix(root, separator) {
+		root = root + separator
+	}
+
+	fsp := root + separator + login
+	err := os.MkdirAll(fsp, os.ModePerm)
+	if err != nil {
+		fmt.Printf("Could not create user root: %s\n", err.Error())
+	}
+
+	db := files.GetDbConnection()
+	defer db.Close()
+
+	t := time.Now()
+	fi := files.DbFileInfo{
+		IsDir:           true,
+		Name:            login,
+		Path:            UrlSeparator,
+		CreatedDateUtc:  t,
+		ModifiedDateUtc: t,
+		OwnerId:         userId,
+	}
+	files.AppendFolder(db, fi, 0)
+}
+
 func parseUrl(url string) *UrlHierarchyItem {
 	p := url
 	i := strings.Index(p, UrlSeparator)

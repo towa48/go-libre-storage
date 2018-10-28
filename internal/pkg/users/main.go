@@ -120,6 +120,20 @@ func createUsersTable(db *sql.DB) {
 	checkErr(err)
 }
 
+func addUser(user User) int {
+	db, err := sql.Open("sqlite3", config.Get().UsersDb)
+	checkErr(err)
+	defer db.Close()
+
+	result, err := db.Exec("insert into users (login, password_hash, salt, created_date_utc) values(?, ?, ?, ?)", user.Login, user.PasswordHash, user.Salt, user.CreatedDateUtc)
+	checkErr(err)
+
+	id, err := result.LastInsertId()
+	checkErr(err)
+
+	return int(id)
+}
+
 func checkErr(err error) {
 	if err != nil {
 		panic(err)
