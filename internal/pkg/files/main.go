@@ -73,35 +73,22 @@ func GetFileInfo(url string, userId int, urlPrefix string) (file DbFileInfo, has
 
 	file, found := getFileInfo(db, url, urlPrefix, userId)
 	if !found {
-		return file, true
+		return file, false
 	}
 
 	return file, true
 }
 
 func GetFileHierarchy(fileId int64) (root DbHierarchyItem, found bool) {
-	db, err := sql.Open("sqlite3", config.Get().FilesDb)
-	checkErr(err)
+	db := GetDbConnection()
 	defer db.Close()
 
-	rows, err := db.Query("SELECT id, name, owner_id, folder_id FROM files WHERE id=?;", fileId)
-	checkErr(err)
-	defer rows.Close()
-
-	var it DbHierarchyItem
-	var f bool
-	for rows.Next() {
-		err = rows.Scan(&it.Id, &it.Name, &it.OwnerId, &it.ParentId)
-		checkErr(err)
-		f = true
-		break
-	}
-
+	it, f := getFileById(db, fileId)
 	if !f {
 		return it, f
 	}
 
-	rows, err = db.Query("with t as (select id, name, owner_id, parent_id from folders where id=? union all select f.id, f.name, f.owner_id, f.parent_id from t join folders as f on f.id = t.parent_id) select t.id, t.name, t.owner_id, t.parent_id from t;", *it.ParentId)
+	rows, err := db.Query("with t as (select id, name, owner_id, parent_id from folders where id=? union all select f.id, f.name, f.owner_id, f.parent_id from t join folders as f on f.id = t.parent_id) select t.id, t.name, t.owner_id, t.parent_id from t;", *it.ParentId)
 	checkErr(err)
 	defer rows.Close()
 
@@ -109,11 +96,14 @@ func GetFileHierarchy(fileId int64) (root DbHierarchyItem, found bool) {
 	for rows.Next() {
 		var folder DbHierarchyItem
 		err = rows.Scan(&folder.Id, &folder.Name, &folder.OwnerId, &folder.ParentId)
-		folder.IsDir = true
-
-		folders = append(folders, folder)
 		checkErr(err)
+
+		folder.IsDir = true
+		folders = append(folders, folder)
 	}
+
+	err = rows.Close()
+	checkErr(err)
 
 	//fmt.Println("Folders count:", len(folders))
 	r := buildHierarchy(folders, it)
@@ -122,54 +112,34 @@ func GetFileHierarchy(fileId int64) (root DbHierarchyItem, found bool) {
 }
 
 func RemoveFolder(folderId int64) {
-	db, err := sql.Open("sqlite3", config.Get().FilesDb)
-	checkErr(err)
+	db := GetDbConnection()
 	defer db.Close()
 
-	stmt, err := db.Prepare("delete from folders where id=?;")
-	checkErr(err)
-	defer stmt.Close()
-
-	_, err = stmt.Exec(folderId)
+	_, err := db.Exec("delete from folders where id=?;", folderId)
 	checkErr(err)
 }
 
 func RemoveFile(fileId int64) {
-	db, err := sql.Open("sqlite3", config.Get().FilesDb)
-	checkErr(err)
+	db := GetDbConnection()
 	defer db.Close()
 
-	stmt, err := db.Prepare("delete from files where id=?;")
-	checkErr(err)
-	defer stmt.Close()
-
-	_, err = stmt.Exec(fileId)
+	_, err := db.Exec("delete from files where id=?;", fileId)
 	checkErr(err)
 }
 
 func ClearUserStorage(userId int) {
-	db, err := sql.Open("sqlite3", config.Get().FilesDb)
-	checkErr(err)
+	db := GetDbConnection()
 	defer db.Close()
 
-	stmt, err := db.Prepare("delete from folders where owner_id=?;")
-	checkErr(err)
-	defer stmt.Close()
-
-	_, err = stmt.Exec(userId)
+	_, err := db.Exec("delete from folders where owner_id=?;", userId)
 	checkErr(err)
 
-	stmt, err = db.Prepare("delete from files where owner_id=?;")
-	checkErr(err)
-	defer stmt.Close()
-
-	_, err = stmt.Exec(userId)
+	_, err = db.Exec("delete from files where owner_id=?;", userId)
 	checkErr(err)
 }
 
 func CheckDatabase() {
-	db, err := sql.Open("sqlite3", config.Get().FilesDb)
-	checkErr(err)
+	db := GetDbConnection()
 	defer db.Close()
 
 	if !isTableExists(db, "schema") {
@@ -184,18 +154,10 @@ func CheckDatabase() {
 }
 
 func createFilesTable(db *sql.DB) {
-	stmt, err := db.Prepare("CREATE TABLE folders (id integer not null primary key autoincrement, name text, parent_id integer references id on delete cascade, url text, created_date_utc datetime, changed_date_utc datetime, owner_id integer);")
-	checkErr(err)
-	defer stmt.Close()
-
-	_, err = stmt.Exec()
+	_, err := db.Exec("CREATE TABLE folders (id integer not null primary key autoincrement, name text, parent_id integer, url text, created_date_utc datetime, changed_date_utc datetime, owner_id integer, constraint fk_parent_folder foreign key (parent_id) references folders(id) on delete cascade);")
 	checkErr(err)
 
-	stmt, err = db.Prepare("CREATE TABLE files (id integer not null primary key autoincrement, name text, folder_id integer references folders(id) on delete cascade, url text, created_date_utc datetime, changed_date_utc datetime, etag string, mime_type string, size integer, owner_id integer);")
-	checkErr(err)
-	defer stmt.Close()
-
-	_, err = stmt.Exec()
+	_, err = db.Exec("CREATE TABLE files (id integer not null primary key autoincrement, name text, folder_id integer not null, url text, created_date_utc datetime, changed_date_utc datetime, etag string, mime_type string, size integer, owner_id integer, constraint fk_parent_folder foreign key (folder_id) references folders(id) on delete cascade);")
 	checkErr(err)
 }
 
@@ -208,18 +170,10 @@ func isTableExists(db *sql.DB, name string) bool {
 }
 
 func createSchemaTable(db *sql.DB, version string) {
-	stmt, err := db.Prepare("CREATE TABLE schema (id integer not null primary key autoincrement, version text);")
-	checkErr(err)
-	defer stmt.Close()
-
-	_, err = stmt.Exec()
+	_, err := db.Exec("CREATE TABLE schema (id integer not null primary key autoincrement, version text);")
 	checkErr(err)
 
-	stmt, err = db.Prepare("insert into schema(version) values(?)")
-	checkErr(err)
-	defer stmt.Close()
-
-	_, err = stmt.Exec(version)
+	_, err = db.Exec("insert into schema(version) values(?)", version)
 	checkErr(err)
 }
 
@@ -272,6 +226,23 @@ func getFileInfo(db *sql.DB, url string, urlPrefix string, userId int) (item DbF
 		checkErr(err)
 		it.Path = urlJoin(urlPrefix, it.Path)
 		it.OwnerId = userId
+		f = true
+		break
+	}
+
+	return it, f
+}
+
+func getFileById(db *sql.DB, fileId int64) (file DbHierarchyItem, found bool) {
+	rows, err := db.Query("SELECT id, name, owner_id, folder_id FROM files WHERE id=?;", fileId)
+	checkErr(err)
+	defer rows.Close()
+
+	var it DbHierarchyItem
+	var f bool
+	for rows.Next() {
+		err = rows.Scan(&it.Id, &it.Name, &it.OwnerId, &it.ParentId)
+		checkErr(err)
 		f = true
 		break
 	}

@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +19,7 @@ import (
 	"github.com/towa48/go-libre-storage/internal/pkg/files"
 )
 
+const EmptyString string = ""
 const WebDavPrefix string = "/webdav"
 const XmlDocumentType string = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
 const WebDavStatusOk string = "HTTP/1.1 200 OK"
@@ -111,7 +113,7 @@ func WebDav(r *gin.Engine) {
 
 		payload, hasAccess := files.GetFolderContent(path, user.Id, WebDavPrefix, includeContent)
 		if !hasAccess || payload == nil {
-			noFoundResult(c)
+			notFoundResult(c)
 			return
 		}
 
@@ -215,13 +217,133 @@ func WebDav(r *gin.Engine) {
 		files.RemoveFile(fi.Id)
 		c.Status(http.StatusNoContent)
 	})
+
+	authorized.PUT("/*path", func(c *gin.Context) {
+		url := stripPrefix(c.Request.URL.Path)
+
+		if strings.HasSuffix(url, UrlSeparator) {
+			fmt.Printf("File url has folder suffix: %s\n", url)
+			badRequestResult(c)
+			return
+		}
+
+		login := c.MustGet(gin.AuthUserKey).(string)
+		user, found := users.GetUserByLogin(login)
+		if !found {
+			forbiddenResult(c)
+			return
+		}
+
+		ctype := c.Request.Header.Get("Content-Type")
+		etag := c.Request.Header.Get("Etag")
+		cl := c.Request.Header.Get("Content-Length")
+		t := time.Now()
+		fsp := getFileSystemPath(url, user)
+
+		var bytes int64 = 0
+		var err error
+		if cl != EmptyString {
+			bytes, err = strconv.ParseInt(cl, 10, 64)
+			if err != nil {
+				fmt.Printf("Error while parsing content size: %s\n", err.Error())
+				badRequestResult(c)
+				return
+			}
+		}
+
+		// check file exists
+		fi, fileExists := files.GetFileInfo(url, user.Id, WebDavPrefix)
+		if fileExists {
+			if ctype == fi.Mime && etag == fi.ETag && bytes == fi.Size {
+				c.String(http.StatusCreated, "")
+				return
+			}
+		}
+
+		// check folder exists
+		fileName := path.Base(url)
+		folder := getPathDir(url)
+		fi2, found := files.GetFolderInfo(folder, user.Id)
+		if !found {
+			fmt.Printf("Folder %s does not exists\n", folder)
+			badRequestResult(c)
+			return
+		}
+
+		// create file
+		f, err := os.OpenFile(fsp, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+		if err != nil {
+			fmt.Printf("Open file error: %s\n", err.Error())
+			notFoundResult(c)
+			return
+		}
+
+		_, copyErr := io.Copy(f, c.Request.Body)
+		//_, statErr := f.Stat()
+		closeErr := f.Close()
+		if copyErr != nil {
+			fmt.Printf("Copy error: %s\n", copyErr.Error())
+			serverErrorResult(c)
+			return
+		}
+		/*if statErr != nil {
+			fmt.Printf("File stat error: %s\n", statErr.Error())
+			serverErrorResult(c)
+			return
+		}*/
+		if closeErr != nil {
+			fmt.Printf("File close error: %s\n", closeErr.Error())
+			serverErrorResult(c)
+			return
+		}
+
+		if etag == EmptyString {
+			etag, err = getFileChecksum(fsp)
+			if err != nil {
+				fmt.Printf("Checksum calc error: %s\n", err.Error())
+				serverErrorResult(c)
+				return
+			}
+		}
+		if ctype == EmptyString {
+			ctype = getFileMime(fsp)
+		}
+
+		// write to DB
+		db := files.GetDbConnection()
+		dfi := files.DbFileInfo{
+			Name:            fileName,
+			Path:            url,
+			ETag:            etag,
+			Mime:            ctype,
+			Size:            bytes,
+			CreatedDateUtc:  t,
+			ModifiedDateUtc: t,
+			OwnerId:         user.Id,
+		}
+		// TODO: update file and do not increase DB sequance
+		if fileExists {
+			files.RemoveFile(fi.Id)
+		}
+		files.AppendFile(db, dfi, fi2.Id)
+		// TODO:
+		//100 Continue
+		//507 Insufficient Storage
+	})
+
+	authorized.Handle("PROPPATCH", "/*path", func(c *gin.Context) {
+		url := stripPrefix(c.Request.URL.Path)
+
+		fmt.Println(url)
+		c.String(http.StatusMethodNotAllowed, "Method not allowed")
+	})
 }
 
 func forbiddenResult(c *gin.Context) {
 	c.String(http.StatusForbidden, "Resource access forbidden")
 }
 
-func noFoundResult(c *gin.Context) {
+func notFoundResult(c *gin.Context) {
 	c.String(http.StatusNotFound, "Resource not found")
 }
 
@@ -233,8 +355,8 @@ func badRequestResult(c *gin.Context) {
 	c.String(http.StatusBadRequest, "Bad request")
 }
 
-func stripPrefix(path string) string {
-	if result := strings.TrimPrefix(path, WebDavPrefix); len(result) < len(path) {
+func stripPrefix(url string) string {
+	if result := strings.TrimPrefix(url, WebDavPrefix); len(result) < len(url) {
 		if !strings.HasPrefix(result, "/") {
 			return "/" + result
 		}
@@ -242,7 +364,17 @@ func stripPrefix(path string) string {
 		return result
 	}
 
-	return path
+	return url
+}
+
+func getPathDir(url string) string {
+	p := path.Dir(url)
+
+	if !strings.HasSuffix(p, UrlSeparator) {
+		p = p + UrlSeparator
+	}
+
+	return p
 }
 
 func buildFilePath(root files.DbHierarchyItem) string {

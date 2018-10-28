@@ -8,7 +8,7 @@ import (
 )
 
 func GetDbConnection() *sql.DB {
-	db, err := sql.Open("sqlite3", config.Get().FilesDb)
+	db, err := sql.Open("sqlite3", config.Get().FilesDb+"?_foreign_keys=true")
 	checkErr(err)
 
 	return db
@@ -16,15 +16,13 @@ func GetDbConnection() *sql.DB {
 
 func AppendFolder(db *sql.DB, fi DbFileInfo, parentId int64) int64 {
 	// select last_insert_rowid();
-	stmt, err := db.Prepare("insert into folders (name, parent_id, url, created_date_utc, changed_date_utc, owner_id) values(?, ?, ?, ?, ?, ?);")
-	checkDbErr(db, err)
-	defer stmt.Close()
-
+	cmd := "insert into folders (name, parent_id, url, created_date_utc, changed_date_utc, owner_id) values(?, ?, ?, ?, ?, ?);"
 	var result sql.Result
+	var err error
 	if parentId == 0 {
-		result, err = stmt.Exec(fi.Name, nil, fi.Path, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.OwnerId)
+		result, err = db.Exec(cmd, fi.Name, nil, fi.Path, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.OwnerId)
 	} else {
-		result, err = stmt.Exec(fi.Name, parentId, fi.Path, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.OwnerId)
+		result, err = db.Exec(cmd, fi.Name, parentId, fi.Path, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.OwnerId)
 	}
 	checkDbErr(db, err)
 
@@ -35,14 +33,12 @@ func AppendFolder(db *sql.DB, fi DbFileInfo, parentId int64) int64 {
 }
 
 func AppendFile(db *sql.DB, fi DbFileInfo, folderId int64) {
-	stmt, err := db.Prepare("insert into files (name, folder_id, url, created_date_utc, changed_date_utc, etag, mime_type, size, owner_id) values(?, ?, ?, ?, ?, ?, ?, ?, ?);")
-	checkDbErr(db, err)
-	defer stmt.Close()
-
+	cmd := "insert into files (name, folder_id, url, created_date_utc, changed_date_utc, etag, mime_type, size, owner_id) values(?, ?, ?, ?, ?, ?, ?, ?, ?);"
+	var err error
 	if folderId == 0 {
-		_, err = stmt.Exec(fi.Name, nil, fi.Path, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.ETag, fi.Mime, fi.Size, fi.OwnerId)
+		_, err = db.Exec(cmd, fi.Name, nil, fi.Path, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.ETag, fi.Mime, fi.Size, fi.OwnerId)
 	} else {
-		_, err = stmt.Exec(fi.Name, folderId, fi.Path, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.ETag, fi.Mime, fi.Size, fi.OwnerId)
+		_, err = db.Exec(cmd, fi.Name, folderId, fi.Path, fi.CreatedDateUtc, fi.ModifiedDateUtc, fi.ETag, fi.Mime, fi.Size, fi.OwnerId)
 	}
 	checkDbErr(db, err)
 }

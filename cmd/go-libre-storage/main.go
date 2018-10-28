@@ -23,6 +23,7 @@ func setupRouter() *gin.Engine {
 	// Disable Console Color
 	// gin.DisableConsoleColor()
 	router := gin.Default()
+	router.MaxMultipartMemory = 8 << 20 // 8 MiB
 	router.HTMLRender = createRender()
 
 	Home(router)
