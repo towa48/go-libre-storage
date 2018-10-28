@@ -29,19 +29,29 @@ func WebDav(r *gin.Engine) {
 	authorized := r.Group(WebDavPrefix, WebDavBasicAuth())
 
 	authorized.OPTIONS("/*path", func(c *gin.Context) {
-		path := stripPrefix(c.Request.URL.Path)
-		if path == "/" {
-			c.Header("Allow", "OPTIONS, PROPFIND")
+		u := stripPrefix(c.Request.URL.Path)
+		if u == "/" {
+			c.Header("Allow", "OPTIONS, GET, PUT, DELETE, MKCOL, PROPFIND")
 		} else {
 			// TBD
+			c.Header("Allow", "OPTIONS, GET, PUT, DELETE, MKCOL, PROPFIND")
 		}
 
 		c.Header("DAV", "1, 2")
 		c.Header("MS-Author-Via", "DAV")
+		c.String(http.StatusOK, "")
 	})
 
 	authorized.Handle("GET", "/*path", func(c *gin.Context) {
-		path := stripPrefix(c.Request.URL.Path)
+		u := stripPrefix(c.Request.URL.Path)
+		decodedUrl, err := decodePath(u)
+		encodedUrl := encodePath(decodedUrl)
+
+		if err != nil {
+			fmt.Printf("Bad url format: %s\n", u)
+			badRequestResult(c)
+			return
+		}
 
 		login := c.MustGet(gin.AuthUserKey).(string)
 		user, found := users.GetUserByLogin(login)
@@ -50,7 +60,7 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		fi, hasAccess := files.GetFileInfo(path, user.Id, WebDavPrefix)
+		fi, hasAccess := files.GetFileInfo(encodedUrl, user.Id, WebDavPrefix)
 		if !hasAccess {
 			forbiddenResult(c)
 			return
@@ -85,7 +95,16 @@ func WebDav(r *gin.Engine) {
 	})
 
 	authorized.Handle("PROPFIND", "/*path", func(c *gin.Context) {
-		path := stripPrefix(c.Request.URL.Path)
+		u := stripPrefix(c.Request.URL.Path)
+		decodedUrl, err := decodePath(u)
+		encodedUrl := encodePath(decodedUrl)
+
+		if err != nil {
+			fmt.Printf("Bad url format: %s\n", u)
+			badRequestResult(c)
+			return
+		}
+
 		depth := parseDepth(c.Request.Header.Get("Depth"))
 
 		if depth == invalidDepth || depth == infiniteDepth {
@@ -112,7 +131,7 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		payload, hasAccess := files.GetFolderContent(path, user.Id, WebDavPrefix, includeContent)
+		payload, hasAccess := files.GetFolderContent(encodedUrl, user.Id, WebDavPrefix, includeContent)
 		if !hasAccess || payload == nil {
 			notFoundResult(c)
 			return
@@ -127,7 +146,15 @@ func WebDav(r *gin.Engine) {
 	})
 
 	authorized.Handle("MKCOL", "/*path", func(c *gin.Context) {
-		path := stripPrefix(c.Request.URL.Path)
+		u := stripPrefix(c.Request.URL.Path)
+		decodedUrl, err := decodePath(u)
+		encodedUrl := encodePath(decodedUrl)
+
+		if err != nil {
+			fmt.Printf("Bad url format: %s\n", u)
+			badRequestResult(c)
+			return
+		}
 
 		login := c.MustGet(gin.AuthUserKey).(string)
 		user, found := users.GetUserByLogin(login)
@@ -136,15 +163,15 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		dir := getFileSystemPath(path, user)
+		dir := getFileSystemPath(decodedUrl, user)
 
-		err := os.MkdirAll(dir, os.ModePerm)
+		err = os.MkdirAll(dir, os.ModePerm)
 		if err != nil {
 			serverErrorResult(c)
 			return
 		}
 
-		root := parseUrl(path)
+		root := parseUrl(encodedUrl)
 		eRoot, parentId, found := getFirstUnknownFolder(root, user.Id)
 
 		if !found {
@@ -413,7 +440,11 @@ func buildFilePath(root files.DbHierarchyItem) string {
 
 	item := root
 	for item.Child != nil {
-		result = result + item.Name + separator
+		p, err := decodePath(item.Name)
+		if err != nil {
+			panic(err)
+		}
+		result = result + p + separator
 		item = *item.Child
 	}
 
