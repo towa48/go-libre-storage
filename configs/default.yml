@@ -2,3 +2,4 @@ usersDb: "./users.db"
 filesDb: "./files.db"
 storage: "C:\\storage"
 systemName: "box"
+includeWebDavPath: true

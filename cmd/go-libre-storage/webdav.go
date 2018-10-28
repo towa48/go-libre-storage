@@ -25,6 +25,8 @@ const WebDavPrefix string = "/webdav"
 const XmlDocumentType string = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
 const WebDavStatusOk string = "HTTP/1.1 200 OK"
 
+var OutputPrefix *string
+
 func WebDav(r *gin.Engine) {
 	authorized := r.Group(WebDavPrefix, WebDavBasicAuth())
 
@@ -112,7 +114,7 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		fi, found := files.GetFileInfo(encodedUrl, user.Id, WebDavPrefix)
+		fi, found := files.GetFileInfo(encodedUrl, user.Id, getOutputPrefix())
 		if !found {
 			forbiddenResult(c)
 			return
@@ -161,7 +163,7 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		payload, hasAccess := files.GetFolderContent(encodedUrl, user.Id, WebDavPrefix, includeContent)
+		payload, hasAccess := files.GetFolderContent(encodedUrl, user.Id, getOutputPrefix(), includeContent)
 		if !hasAccess || payload == nil {
 			notFoundResult(c)
 			return
@@ -267,7 +269,7 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		fi, found := files.GetFileInfo(encodedUrl, user.Id, WebDavPrefix)
+		fi, found := files.GetFileInfo(encodedUrl, user.Id, getOutputPrefix())
 		if !found {
 			badRequestResult(c)
 			return
@@ -328,7 +330,7 @@ func WebDav(r *gin.Engine) {
 		}
 
 		// check file exists
-		fi, fileExists := files.GetFileInfo(encodedUrl, user.Id, WebDavPrefix)
+		fi, fileExists := files.GetFileInfo(encodedUrl, user.Id, getOutputPrefix())
 		if fileExists {
 			if ctype == fi.Mime && etag == fi.ETag && bytes == fi.Size {
 				c.String(http.StatusCreated, EmptyString)
@@ -458,6 +460,23 @@ func encodePath(val string) string {
 
 func decodePath(val string) (string, error) {
 	return url.PathUnescape(val)
+}
+
+func getOutputPrefix() string {
+	if OutputPrefix != nil {
+		return *OutputPrefix
+	}
+
+	inc := config.Get().IncludeWebDavPath
+	if inc {
+		a := WebDavPrefix
+		OutputPrefix = &a
+		return *OutputPrefix
+	}
+
+	a := ""
+	OutputPrefix = &a
+	return *OutputPrefix
 }
 
 func buildFilePath(root files.DbHierarchyItem) string {
