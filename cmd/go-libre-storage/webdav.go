@@ -173,7 +173,7 @@ func WebDav(r *gin.Engine) {
 
 	authorized.DELETE("/*path", func(c *gin.Context) {
 		u := stripPrefix(c.Request.URL.Path)
-		decodedUrl, err := url.PathUnescape(u)
+		decodedUrl, err := decodePath(u)
 		encodedUrl := encodePath(decodedUrl)
 
 		if err != nil {
@@ -229,7 +229,7 @@ func WebDav(r *gin.Engine) {
 
 	authorized.PUT("/*path", func(c *gin.Context) {
 		u := stripPrefix(c.Request.URL.Path)
-		decodedUrl, err := url.PathUnescape(u)
+		decodedUrl, err := decodePath(u)
 		encodedUrl := encodePath(decodedUrl)
 
 		if err != nil {
@@ -351,9 +351,6 @@ func WebDav(r *gin.Engine) {
 	})
 
 	authorized.Handle("PROPPATCH", "/*path", func(c *gin.Context) {
-		url := stripPrefix(c.Request.URL.Path)
-
-		fmt.Println(url)
 		c.String(http.StatusMethodNotAllowed, "Method not allowed")
 	})
 }
@@ -400,6 +397,10 @@ func encodePath(val string) string {
 	u := url.PathEscape(val)
 	u = strings.Replace(u, "%2F", UrlSeparator, -1)
 	return u
+}
+
+func decodePath(val string) (string, error) {
+	return url.PathUnescape(val)
 }
 
 func buildFilePath(root files.DbHierarchyItem) string {
