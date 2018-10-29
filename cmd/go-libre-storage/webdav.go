@@ -523,9 +523,11 @@ func createUserRoot(userId int, login string) {
 	}
 
 	fsp := root + separator + login
-	err := os.MkdirAll(fsp, os.ModePerm)
-	if err != nil {
-		fmt.Printf("Could not create user root: %s\n", err.Error())
+	if _, err := os.Stat(fsp); os.IsNotExist(err) {
+		err := os.MkdirAll(fsp, os.ModePerm)
+		if err != nil {
+			fmt.Printf("Could not create user root: %s\n", err.Error())
+		}
 	}
 
 	db := files.GetDbConnection()

@@ -61,7 +61,10 @@ func encodePassword(password string, salt []byte) []byte {
 }
 
 func generateSalt() []byte {
-	token := make([]byte, keylen)
-	rand.Read(token)
-	return token
+	t := make([]byte, keylen)
+	rand.Seed(time.Now().UnixNano()) // initialize rand
+	if _, err := rand.Read(t); err != nil {
+		fmt.Println("Error while generating salt. ", err.Error())
+	}
+	return t
 }
