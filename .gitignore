@@ -23,5 +23,5 @@ storage/*/
 
 # web
 node_modules/*
-wwwroot/js/*-bundle.js
-wwwroot/js/*-bundle.min.js
+*-bundle.js
+*-bundle.min.js
