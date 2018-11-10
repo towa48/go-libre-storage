@@ -23,14 +23,18 @@
   },
   "homepage": "https://github.com/towa48/go-libre-storage#readme",
   "devDependencies": {
+    "css-loader": "^1.0.1",
     "html-loader": "^0.5.5",
+    "less": "^3.8.1",
     "less-loader": "^4.1.0",
     "node-sass": "^4.10.0",
     "npm-run-all": "^4.1.3",
     "object.assign": "^4.1.0",
     "uglifyjs-webpack-plugin": "^2.0.1",
     "vue": "^2.5.17",
+    "vue-loader": "^15.4.2",
     "vue-router": "^3.0.1",
+    "vue-template-compiler": "^2.5.17",
     "webpack": "^4.25.1",
     "webpack-cli": "^3.1.2"
   }

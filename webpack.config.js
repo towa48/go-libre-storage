@@ -1,5 +1,6 @@
 const path = require('path');
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
+const VueLoaderPlugin = require('vue-loader/lib/plugin');
 
 module.exports = (env, argv) => ({
   entry: {
@@ -28,14 +29,14 @@ module.exports = (env, argv) => ({
   module: {
     rules: [
       {
-        test: /\.html$/,
-        use: [{
-            loader: 'html-loader',
-            options: { minimize: true }
-        }]
+        test: /\.vue$/,
+        loader: 'vue-loader'
       }
     ]
   },
+  plugins: [
+    new VueLoaderPlugin()
+  ],
   resolve: {
     alias: {
       'vue$': 'vue/dist/vue.esm.js'

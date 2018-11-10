@@ -1,12 +1,12 @@
 require('./utils/polyfills');
 
-var Vue = require('vue').default;
-var VueRouter = require('vue-router').default;
+import Vue from 'vue';
+import VueRouter from 'vue-router';
 
 Vue.use(VueRouter);
 
-var WelcomeLayoutComponent = require('./components/welcome-layout/welcome-layout.component');
-var WelcomeComponent = require('./components/welcome/welcome.component');
+import WelcomeLayoutComponent from './components/welcome-layout.vue';
+import WelcomeComponent from './components/welcome.vue';
 var NotFoundComponent = { template: '<h2>Not found</h2>' }
 
 var routes = [{
@@ -34,7 +34,7 @@ var router = new VueRouter({
     routes: routes
 })
 
-var app = new Vue({
+new Vue({
     el: '#app',
     router: router,
     template: '<router-view></router-view>'
