@@ -6,14 +6,17 @@ DEPLOY_FILES = ./bin ./configs/ ./web ./LICENSE ./README.md
 
 tools:
 	go get -u github.com/kardianos/govendor
+	npm i
 
 build-dev:
 	@mkdir -p ./bin
 	GOGC=off go build -i -o ./bin/go-libre-storage ./cmd/go-libre-storage
+	npm run dev
 
 build-arm7hf:
 	@mkdir -p ./bin
 	GOGC=40 GOOS=linux GOARCH=arm GOARM=7 CGO_ENABLED=1 CC=arm-linux-gnueabihf-gcc CXX=arm-linux-gnueabihf-g++ go build -ldflags "-linkmode external -extldflags -static" -i -o ./bin/go-libre-storage ./cmd/go-libre-storage
+	npm run build
 
 build: build-dev
 

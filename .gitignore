@@ -24,4 +24,7 @@ storage/*/
 # web
 node_modules/*
 *-bundle.js
+*-bundle.js.map
 *-bundle.min.js
+*-bundle.min.js.map
+*-bundle.css
