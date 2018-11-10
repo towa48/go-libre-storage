@@ -17,7 +17,7 @@ const templatesPath = "./web/templates/"
 
 func createRender() multitemplate.Renderer {
 	r := multitemplate.NewRenderer()
-	r.AddFromFiles("login", templatesPath+"_layout.html", templatesPath+"login.html")
+	r.AddFromFiles("welcome", templatesPath+"_layout.html", templatesPath+"welcome.html")
 	//r.AddFromFiles("index", templatesPath + "_layout.html", templatesPath + "index.html")
 
 	return r
@@ -29,6 +29,14 @@ func setupRouter() *gin.Engine {
 	router := gin.Default()
 	router.MaxMultipartMemory = 8 << 20 // 8 MiB
 	router.HTMLRender = createRender()
+
+	// static
+	router.Static("/js", "./web/wwwroot/js")
+	router.Static("/styles", "./web/wwwroot/styles")
+	router.StaticFile("/robots.txt", "./web/wwwroot/robots.txt")
+	router.StaticFile("/site.webmanifest", "./web/wwwroot/site.webmanifest")
+	router.StaticFile("/favicon.ico", "./web/wwwroot/favicon.ico")
+	router.StaticFile("/icon.png", "./web/wwwroot/icon.png")
 
 	Home(router)
 	Accounts(router)

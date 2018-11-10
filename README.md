@@ -36,6 +36,6 @@ Cross-compile for RaspberryPi 3 on Windows
 
 ## License
 
-[MIT](http://opensource.org/licenses/MIT)
+[GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl.txt)
 
 Copyright (c) 2018-present, towa48

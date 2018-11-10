@@ -11,9 +11,9 @@ func Home(router *gin.Engine) {
 	router.GET("/", func(c *gin.Context) {
 
 		viewModel := gin.H{
-			"title": "Login",
+			"title": "Go Libre Storage",
 		}
 
-		c.HTML(http.StatusOK, "login", viewModel)
+		c.HTML(http.StatusOK, "welcome", viewModel)
 	})
 }

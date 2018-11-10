@@ -1,0 +1,30 @@
+{
+  "name": "go-libre-storage",
+  "version": "1.0.0",
+  "description": "go-libre-storage\r =========",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "webpack --mode development",
+    "build": "webpack --mode production"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/towa48/go-libre-storage.git"
+  },
+  "author": "Anton Prilepsky",
+  "license": "AGPL-3.0",
+  "bugs": {
+    "url": "https://github.com/towa48/go-libre-storage/issues"
+  },
+  "homepage": "https://github.com/towa48/go-libre-storage#readme",
+  "devDependencies": {
+    "html-loader": "^0.5.5",
+    "object.assign": "^4.1.0",
+    "uglifyjs-webpack-plugin": "^2.0.1",
+    "vue": "^2.5.17",
+    "vue-router": "^3.0.1",
+    "webpack": "^4.25.1",
+    "webpack-cli": "^3.1.2"
+  }
+}
