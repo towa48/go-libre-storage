@@ -3,3 +3,4 @@ filesDb: "./files.db"
 storage: "C:\\storage"
 systemName: "box"
 includeWebDavPath: true
+cookieSecret: "tfYWZV5sUMdM"

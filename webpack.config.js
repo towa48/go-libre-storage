@@ -6,6 +6,7 @@ const VueLoaderPlugin = require('vue-loader/lib/plugin');
 module.exports = (env, argv) => ({
   entry: {
     'welcome-bundle': './web/wwwroot/js/welcome.entry.js',
+    'main-bundle': './web/wwwroot/js/main.entry.js',
   },
   //devtool: 'source-map',
   output: {

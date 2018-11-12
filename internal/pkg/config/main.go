@@ -16,6 +16,7 @@ type Config struct {
 	Storage           string `yaml:"storage"`
 	SystemName        string `yaml:"systemName"`
 	IncludeWebDavPath bool   `yaml:"includeWebDavPath"`
+	CookieSecret      string `yaml:"cookieSecret"`
 }
 
 func Get() Config {

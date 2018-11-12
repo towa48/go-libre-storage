@@ -5,24 +5,24 @@ import VueRouter from 'vue-router';
 
 Vue.use(VueRouter);
 
-import WelcomeLayoutComponent from './components/welcome-layout.vue';
-import WelcomeComponent from './components/welcome.vue';
+import IndexLayoutComponent from './components/index-layout.vue';
+import IndexComponent from './components/index.vue';
 var NotFoundComponent = { template: '<h2>Not found</h2>' }
 
 var routes = [{
-    path: '/welcome',
-    component: WelcomeLayoutComponent,
+    path: '/index',
+    component: IndexLayoutComponent,
     children: [{
         path: '',
-        name: 'welcome',
-        component: WelcomeComponent
+        name: 'index',
+        component: IndexComponent
     }]
 }, {
     path: '/',
-    redirect: '/welcome'
+    redirect: '/index'
 }, {
     path: '*',
-    component: WelcomeLayoutComponent,
+    component: IndexLayoutComponent,
     children: [{
         path: '',
         name: 'notfound',

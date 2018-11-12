@@ -14,6 +14,11 @@ func Home(router *gin.Engine) {
 			"title": "Go Libre Storage",
 		}
 
+		if isAuthenticated(c) {
+			c.HTML(http.StatusOK, "index", viewModel)
+			return
+		}
+
 		c.HTML(http.StatusOK, "welcome", viewModel)
 	})
 }
