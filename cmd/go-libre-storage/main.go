@@ -43,6 +43,7 @@ func setupRouter() *gin.Engine {
 	// static
 	router.Static("/js", "./web/wwwroot/js")
 	router.Static("/styles", "./web/wwwroot/styles")
+	router.Static("/images", "./web/wwwroot/images")
 	router.StaticFile("/robots.txt", "./web/wwwroot/robots.txt")
 	router.StaticFile("/site.webmanifest", "./web/wwwroot/site.webmanifest")
 	router.StaticFile("/favicon.ico", "./web/wwwroot/favicon.ico")

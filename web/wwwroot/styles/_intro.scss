@@ -1,0 +1,69 @@
+.intro {
+    background-color: $white;
+    position: relative;
+
+    @include media-breakpoint-up(sm) {
+        &_inner__centered {
+            padding: 100px 1rem;
+        }
+    }
+
+    &_inner {
+        display: table;
+        width: 100%;
+        height: 110vh;
+    }
+
+    &_inner__centered {
+        position: relative;
+        width: 100%;
+        padding: 60px 30px;
+        color: inherit;
+        background-color: $white;
+        background-position: center;
+        background-size: cover;
+        background-repeat: no-repeat;
+    }
+
+    &_text {
+        color: $white;
+        background-color: $black;
+    }
+
+    &_inner-bg {
+        background-image: url('/images/welcome-bg-1200.jpg');
+    }
+
+    &_navbar {
+        position: fixed;
+        top: 0;
+        right: 0;
+        left: 0;
+        z-index: 1030;
+    }
+
+    &_stage {
+        display: table-cell;
+        vertical-align: middle;
+
+        padding-bottom: 3rem !important;
+
+        &_row {
+            width: 100%;
+            padding-right: 10px;
+            padding-left: 10px;
+            margin-right: auto;
+            margin-left: auto;
+
+            &_inner {
+                display: -webkit-box;
+                display: -ms-flexbox;
+                display: flex;
+                -ms-flex-wrap: wrap;
+                flex-wrap: wrap;
+                margin-right: -10px;
+                margin-left: -10px;
+            }
+        }
+    }
+}
