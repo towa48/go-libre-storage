@@ -17,13 +17,15 @@
                             <form>
                                 <h2 class="text-center">Login</h2>
                                 <div class="form-group">
-                                    <input type="text" class="form-control" name="username" placeholder="Username" required="required">
+                                    <input type="text" class="form-control" name="username" placeholder="Username" required="required"
+                                        v-model="username">
                                 </div>
                                 <div class="form-group">
-                                    <input type="password" class="form-control" name="password" placeholder="Password" required="required">
+                                    <input type="password" class="form-control" name="password" placeholder="Password" required="required"
+                                        v-model="password">
                                 </div>
                                 <div class="form-group">
-                                    <button type="submit" class="btn btn-primary btn-lg btn-block">Sign in</button>
+                                    <button type="submit" class="btn btn-primary btn-lg btn-block" v-on:click.prevent="signIn">Sign in</button>
                                 </div>
                                 <!--<p><a href="#">Lost your Password?</a></p>-->
                             </form>

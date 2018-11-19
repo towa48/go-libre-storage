@@ -2,5 +2,6 @@ usersDb: "./users.db"
 filesDb: "./files.db"
 storage: "C:\\storage"
 systemName: "box"
+systemTitle: "Go Libre Storage"
 includeWebDavPath: true
 cookieSecret: "tfYWZV5sUMdM"

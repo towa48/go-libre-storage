@@ -15,6 +15,7 @@ type Config struct {
 	FilesDb           string `yaml:"filesDb"`
 	Storage           string `yaml:"storage"`
 	SystemName        string `yaml:"systemName"`
+	SystemTitle       string `yaml:"systemTitle"`
 	IncludeWebDavPath bool   `yaml:"includeWebDavPath"`
 	CookieSecret      string `yaml:"cookieSecret"`
 }
