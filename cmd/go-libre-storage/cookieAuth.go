@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/towa48/go-libre-storage/internal/pkg/users"
@@ -32,6 +33,19 @@ func cookieAuth() gin.HandlerFunc {
 		// set user for gin context
 		ctx.Set(gin.AuthUserKey, login)
 	}
+}
+
+func authenticate(ctx *gin.Context, login string, rememberMe bool) {
+	session := sessions.Default(ctx)
+	session.Set(AuthCookie, login)
+	err := session.Save()
+
+	fmt.Println("Session save error.", err)
+	// TODO: remember me
+}
+
+func slideExpiration(ctx *gin.Context) {
+	// TODO
 }
 
 func isAuthenticated(ctx *gin.Context) bool {
