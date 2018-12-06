@@ -3,6 +3,25 @@ const webpack = require('webpack');
 const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 const VueLoaderPlugin = require('vue-loader/lib/plugin');
 
+const sassResourcesLoader = {
+  loader: 'sass-resources-loader',
+  options: {
+    resources: [
+      path.resolve(__dirname, 'node_modules/bootstrap/scss/_functions.scss'),
+      path.resolve(__dirname, 'node_modules/bootstrap/scss/_mixins.scss'),
+      path.resolve(__dirname, 'node_modules/bootstrap/scss/_variables.scss'),
+      path.resolve(__dirname, 'web/wwwroot/styles/_variables.scss'),
+    ]
+  }
+}
+
+const scssLoaders = [
+  'vue-style-loader',
+  'css-loader',
+  'sass-loader',
+  sassResourcesLoader
+]
+
 module.exports = (env, argv) => ({
   entry: {
     'welcome-bundle': './web/wwwroot/js/welcome.entry.js',
@@ -31,8 +50,24 @@ module.exports = (env, argv) => ({
   module: {
     rules: [
       {
+        test: /\.css$/,
+        use: [
+          'vue-style-loader',
+          'css-loader'
+        ],
+      },
+      {
+        test: /\.scss$/,
+        use: scssLoaders,
+      },
+      {
         test: /\.vue$/,
-        loader: 'vue-loader'
+        loader: 'vue-loader',
+        options: {
+          loaders: {
+            'scss': scssLoaders
+          }
+        }
       }
     ]
   },
