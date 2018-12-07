@@ -1,14 +1,12 @@
 <template>
     <section class="body">
         <my-header></my-header>
-        <div class="container-fluid">
-            <div class="row">
-                <my-sidebar></my-sidebar>
+        <div class="inner-wrapper">
+            <my-sidebar></my-sidebar>
 
-                <main role="main" class="col-md-9 col-lg-10">
-                    <router-view></router-view>
-                </main>
-            </div>
+            <main role="main" class="content-body">
+                <router-view></router-view>
+            </main>
         </div>
     </section>
 </template>
@@ -32,5 +30,23 @@ export default {
 .body {
     min-height: 100vh;
     width: 100%;
+}
+.inner-wrapper {
+    min-height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    padding-top: 60px;
+}
+.content-body {
+    display: table-cell;
+    padding: 40px;
+    position: relative;
+    vertical-align: top;
+}
+@include media-breakpoint-up(md) {
+    .content-body {
+        display: block;
+        margin-left: 300px;
+    }
 }
 </style>

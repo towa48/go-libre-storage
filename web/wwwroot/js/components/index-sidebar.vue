@@ -1,6 +1,6 @@
 <template>
-    <nav class="col-md-2 sidebar">
-        <div class="sidebar-sticky">
+    <aside class="sidebar sidebar-left">
+        <nav class="sidebar-sticky">
             <h6 class="sidebar-heading">Library</h6>
             <ul class="nav flex-column">
                 <li v-bind:class="{ active: isActive('documents') }" class="nav-item">
@@ -17,8 +17,8 @@
                     </router-link>
                 </li>
             </ul>
-        </div>
-    </nav>
+        </nav>
+    </aside>
 </template>
 
 <script>
@@ -39,5 +39,19 @@ export default {
 <style lang="scss">
 .sidebar {
     background-image: linear-gradient(-179deg, #f7f7f6 0%, #ebebeb 100%);
+}
+.sidebar-left {
+    position: relative;
+    vertical-align: top;
+    width: 300px;
+}
+@include media-breakpoint-up(md) {
+    .sidebar-left {
+        bottom: 0;
+        left: 0;
+        padding-bottom: 50px;
+        position: fixed;
+        top: 60px;
+    }
 }
 </style>

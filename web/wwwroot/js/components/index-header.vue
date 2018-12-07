@@ -25,5 +25,19 @@ export default {
     background: $white;
     border-bottom: 1px solid #e9e9e6;
     border-top: 3px solid #ededed;
+
+    .logo {
+	    float: left;
+	    margin: 10px 0 0 15px;
+
+        img {
+	        color: transparent;
+        }
+    }
+}
+
+.header-right {
+    float: right;
+    height: 56px;
 }
 </style>
