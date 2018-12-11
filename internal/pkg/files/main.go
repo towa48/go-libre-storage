@@ -59,12 +59,19 @@ func GetFolderContent(url string, userId int, urlPrefix string, includeContent b
 	return result, true
 }
 
-func GetFolderInfo(url string, userId int) (item *DbFileInfo, hasAccess bool) {
+func GetFolderInfo(url string, userId int) (item *DbFileInfo, found bool) {
 	c, f := GetFolderContent(url, userId, "", false)
 	if !f {
 		return nil, false
 	}
 	return &c[0], true
+}
+
+func GetFolderInfoById(folderId int64) (item *DbFileInfo, found bool) {
+	db := GetDbConnection()
+	defer db.Close()
+
+	return getFolderInfoById(db, folderId, "")
 }
 
 func GetFileInfo(url string, userId int, urlPrefix string) (file DbFileInfo, hasAccess bool) {
@@ -127,6 +134,13 @@ func RemoveFile(fileId int64) {
 	checkErr(err)
 }
 
+func ShareFolderToUser(folderId int64, userId int, readOnly bool) {
+	db := GetDbConnection()
+	defer db.Close()
+
+	shareFolderToUser(db, folderId, userId, readOnly)
+}
+
 func ClearUserStorage(userId int) {
 	db := GetDbConnection()
 	defer db.Close()
@@ -144,7 +158,7 @@ func CheckDatabase() {
 
 	if !isTableExists(db, "schema") {
 		fmt.Println("Creating DB schema table")
-		createSchemaTable(db, "1.1")
+		createSchemaTable(db, "1.2")
 	}
 
 	if !isTableExists(db, "files") {
@@ -158,6 +172,24 @@ func createFilesTable(db *sql.DB) {
 	checkErr(err)
 
 	_, err = db.Exec("CREATE TABLE files (id integer not null primary key autoincrement, name text, folder_id integer not null, url text, created_date_utc datetime, changed_date_utc datetime, etag string, mime_type string, size integer, owner_id integer, constraint fk_parent_folder foreign key (folder_id) references folders(id) on delete cascade);")
+	checkErr(err)
+
+	_, err = db.Exec("CREATE TABLE shared_folders (folder_id integer not null, read_only integer, target_user_id integer not null, constraint fk_shared_folder foreign key (folder_id) references folders(id) on delete cascade);")
+	checkErr(err)
+
+	_, err = db.Exec("CREATE TABLE shared_files (file_id integer not null, read_only integer, target_user_id integer not null, constraint fk_shared_file foreign key (file_id) references files(id) on delete cascade);")
+	checkErr(err)
+
+	_, err = db.Exec("CREATE INDEX idx_shared_folders on shared_folders(folder_id, target_user_id);")
+	checkErr(err)
+
+	_, err = db.Exec("CREATE INDEX idx_shared_folders_user on shared_folders(target_user_id);")
+	checkErr(err)
+
+	_, err = db.Exec("CREATE INDEX idx_shared_files on shared_files(file_id, target_user_id);")
+	checkErr(err)
+
+	_, err = db.Exec("CREATE INDEX idx_shared_files_user on shared_files(target_user_id);")
 	checkErr(err)
 }
 
@@ -268,6 +300,43 @@ func getFolderInfo(db *sql.DB, url string, urlPrefix string, userId int) (item D
 	}
 
 	return it, f
+}
+
+func getFolderInfoById(db *sql.DB, folderId int64, urlPrefix string) (item *DbFileInfo, found bool) {
+	rows, err := db.Query("SELECT id, name, url, created_date_utc, changed_date_utc, owner_id FROM folders WHERE id=?;", folderId)
+	checkErr(err)
+	defer rows.Close()
+
+	var it DbFileInfo
+	var f bool
+	for rows.Next() {
+		err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc, &it.OwnerId)
+		checkErr(err)
+		it.Path = urlJoin(urlPrefix, it.Path)
+		it.IsDir = true
+		f = true
+		break
+	}
+
+	if !f {
+		return nil, false
+	}
+
+	return &it, f
+}
+
+func shareFolderToUser(db *sql.DB, folderId int64, userId int, readOnly bool) {
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM shared_folders WHERE folder_id=? and target_user_id=?;", folderId, userId).Scan(&count)
+	checkErr(err)
+
+	if count > 0 {
+		return
+	}
+
+	cmd := "insert into shared_folders (folder_id, target_user_id, read_only) values(?, ?, ?);"
+	_, err = db.Exec(cmd, folderId, userId, readOnly)
+	checkErr(err)
 }
 
 func buildHierarchy(folders []DbHierarchyItem, file DbHierarchyItem) DbHierarchyItem {

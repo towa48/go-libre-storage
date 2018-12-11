@@ -36,14 +36,19 @@ Cross-compile for RaspberryPi 3 on Windows
 
 ## CLI
 
-Restore files metadata from filesystem (disable files share)
+Restore files metadata from filesystem (disable files sharing)
 ```
 > ./bin/go-libre-storage --crawl
 ```
 
 Add user
 ```
-> ./bin/go-libre-storage --adduser user2
+> ./bin/go-libre-storage --add-user user2
+```
+
+Share folder to user
+```
+> ./bin/go-libre-storage --share-folder 8 --to user2 --write
 ```
 
 ## License
