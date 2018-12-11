@@ -34,6 +34,18 @@ Cross-compile for RaspberryPi 3 on Windows
 > HOST="localhost" ./bin/go-libre-storage
 ```
 
+## CLI
+
+Restore files metadata from filesystem (disable files share)
+```
+> ./bin/go-libre-storage --crawl
+```
+
+Add user
+```
+> ./bin/go-libre-storage --adduser user2
+```
+
 ## License
 
 [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl.txt)
