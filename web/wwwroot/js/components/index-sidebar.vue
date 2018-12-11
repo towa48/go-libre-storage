@@ -39,6 +39,16 @@ export default {
 <style lang="scss">
 .sidebar {
     background-image: linear-gradient(-179deg, #f7f7f6 0%, #ebebeb 100%);
+
+    .sidebar-heading {
+        font-size: $sidebar-head-font-size;
+        color: #707e8c;
+        line-height: $sidebar-head-line-height;
+        text-shadow: 0 1px 0 rgba(255,255,255,0.46);
+        text-transform: uppercase;
+        display: inline-block;
+        padding: 5px 9px;
+    }
 }
 .sidebar-left {
     position: relative;

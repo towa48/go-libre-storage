@@ -1,1 +1,8 @@
 //$primary-color: #333;
+$font-family-sans-serif:       'Ubuntu', sans-serif;
+$font-family-base:             $font-family-sans-serif;
+$font-weight-base:             400;
+$font-size-base:               0.9rem;
+
+$sidebar-head-font-size:       $font-size-base !default;
+$sidebar-head-line-height:     1.2 !default;

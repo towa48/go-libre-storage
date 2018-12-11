@@ -2,12 +2,16 @@
 @import "bootstrap/scss/mixins";
 @import "bootstrap/scss/variables";
 
+/* rewrite variables */
+@import "variables";
+@import "font";
+
 @import "bootstrap/scss/root";
 @import "bootstrap/scss/reboot";
+@import "bootstrap/scss/type";
 @import "bootstrap/scss/grid";
 @import "bootstrap/scss/forms";
 @import "bootstrap/scss/buttons";
 
-@import "variables";
 @import "spinner";
 @import "intro";
