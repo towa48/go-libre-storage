@@ -372,7 +372,9 @@ func getSharedFolderContent(db *sql.DB, parentFolder DbFileInfo, urlPrefix strin
 }
 
 func getFileInfo(db *sql.DB, url string, urlPrefix string, userId int) (item DbFileInfo, found bool) {
-	rows, err := db.Query("SELECT id, name, url, created_date_utc, changed_date_utc, etag, mime_type, size FROM files WHERE url=? and owner_id=?;", url, userId)
+	rows, err := db.Query(`SELECT id, name, url, created_date_utc, changed_date_utc, etag, mime_type, size
+		FROM files
+		WHERE url=? and owner_id=?;`, url, userId)
 	checkErr(err)
 	defer rows.Close()
 
@@ -385,6 +387,34 @@ func getFileInfo(db *sql.DB, url string, urlPrefix string, userId int) (item DbF
 		it.OwnerId = userId
 		f = true
 		break
+	}
+
+	if !f {
+		root, rootFound := findSharedRoot(db, url, urlPrefix, userId)
+		if !rootFound {
+			return it, false
+		}
+
+		truncatedRootPath := strings.TrimPrefix(root.Path, urlPrefix)
+
+		rows, err = db.Query(`SELECT id, name, url, created_date_utc, changed_date_utc, etag, mime_type, size
+			FROM files
+			WHERE url like '%' || ? and url like ? || '%' and owner_id=?;`, url, truncatedRootPath, root.OwnerId)
+		checkErr(err)
+		defer rows.Close()
+
+		for rows.Next() {
+			err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc, &it.ETag, &it.Mime, &it.Size)
+			checkErr(err)
+
+			it.Path = urlJoin(urlPrefix, it.Path) // TBD fix path
+			it.OwnerId = root.OwnerId
+			it.IsShared = true
+			it.IsReadOnly = root.IsReadOnly
+
+			f = true
+			break
+		}
 	}
 
 	return it, f
@@ -428,42 +458,15 @@ func getFolderInfo(db *sql.DB, url string, urlPrefix string, userId int) (item D
 }
 
 func getSharedFolderInfo(db *sql.DB, url string, urlPrefix string, userId int) (item DbFileInfo, found bool) {
-	urlParts := urlSplit(url)
-	rootFolder := urlParts[0]
-	rootFolderUrl := UrlSeparator + rootFolder + UrlSeparator
-
-	fmt.Println(url, rootFolderUrl)
-
-	var rootFolderId int64
-	var rootOwnerId int
-	var rootIsReadOnly bool
-	var f bool
-
-	// check root folder is shared
-	rows, err := db.Query(`SELECT f.id, f.owner_id, s.read_only
-		FROM shared_folders AS s
-		INNER JOIN folders AS f
-			ON s.folder_id = f.id
-		WHERE s.target_user_id=? AND f.url like '%' || ?;`, userId, rootFolderUrl)
-
-	checkErr(err)
-	defer rows.Close()
-
-	var readOnlyInt int
-	for rows.Next() {
-		err = rows.Scan(&rootFolderId, &rootOwnerId, &readOnlyInt)
-		checkErr(err)
-
-		rootIsReadOnly = readOnlyInt > 0
-		f = true
-	}
-
-	if !f {
+	root, rootFound := findSharedRoot(db, url, urlPrefix, userId)
+	if !rootFound {
 		var it DbFileInfo
 		return it, false // TODO: return nil
 	}
 
-	rows, err = db.Query(`with t
+	// TODO: simplify query with just ownerId and root url prefix
+	// see getFileInfo for more info
+	rows, err := db.Query(`with t
 		as
 		(
 			select id, name, parent_id, url, created_date_utc, changed_date_utc
@@ -477,21 +480,22 @@ func getSharedFolderInfo(db *sql.DB, url string, urlPrefix string, userId int) (
 		)
 		select t.id, t.name, t.url, t.created_date_utc, t.changed_date_utc
 		from t
-		where t.url like '%' || ?;`, rootFolderId, url)
+		where t.url like '%' || ?;`, root.Id, url)
 
 	checkErr(err)
 	defer rows.Close()
 
 	var it DbFileInfo
+	var f bool
 	for rows.Next() {
 		err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc)
 		checkErr(err)
 
 		it.Path = urlJoin(urlPrefix, url) // get only url suffix from original one
-		it.OwnerId = rootOwnerId
+		it.OwnerId = root.OwnerId
 		it.IsDir = true
 		it.IsShared = true
-		it.IsReadOnly = rootIsReadOnly
+		it.IsReadOnly = root.IsReadOnly
 
 		f = true
 		break
@@ -535,6 +539,41 @@ func shareFolderToUser(db *sql.DB, folderId int64, userId int, readOnly bool) {
 	cmd := "insert into shared_folders (folder_id, target_user_id, read_only) values(?, ?, ?);"
 	_, err = db.Exec(cmd, folderId, userId, readOnly)
 	checkErr(err)
+}
+
+func findSharedRoot(db *sql.DB, url string, urlPrefix string, userId int) (item DbFileInfo, found bool) {
+	var it DbFileInfo
+
+	urlParts := urlSplit(url)
+	rootFolder := urlParts[0]
+	rootFolderUrl := UrlSeparator + rootFolder + UrlSeparator
+
+	var rootFound bool
+
+	// check root folder is shared
+	rows, err := db.Query(`SELECT f.id, f.name, f.owner_id, f.url, f.created_date_utc, f.changed_date_utc, s.read_only
+		FROM shared_folders AS s
+		INNER JOIN folders AS f
+			ON s.folder_id = f.id
+		WHERE s.target_user_id=? AND f.url like '%' || ?;`, userId, rootFolderUrl)
+
+	checkErr(err)
+	defer rows.Close()
+
+	var readOnlyInt int
+	for rows.Next() {
+		err = rows.Scan(&it.Id, &it.Name, &it.OwnerId, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc, &readOnlyInt)
+		checkErr(err)
+
+		it.Path = urlJoin(urlPrefix, it.Path)
+		it.IsDir = true
+		it.IsShared = true
+		it.IsReadOnly = readOnlyInt > 0
+
+		rootFound = true
+	}
+
+	return it, rootFound
 }
 
 func buildHierarchy(folders []DbHierarchyItem, file DbHierarchyItem) DbHierarchyItem {
