@@ -464,23 +464,11 @@ func getSharedFolderInfo(db *sql.DB, url string, urlPrefix string, userId int) (
 		return it, false // TODO: return nil
 	}
 
-	// TODO: simplify query with just ownerId and root url prefix
-	// see getFileInfo for more info
-	rows, err := db.Query(`with t
-		as
-		(
-			select id, name, parent_id, url, created_date_utc, changed_date_utc
-			from folders
-			where id = ?
-			union all
-			select f.id, f.name, f.parent_id, f.url, f.created_date_utc, f.changed_date_utc
-			from t
-			join folders as f
-				on f.parent_id = t.id
-		)
-		select t.id, t.name, t.url, t.created_date_utc, t.changed_date_utc
-		from t
-		where t.url like '%' || ?;`, root.Id, url)
+	truncatedRootPath := strings.TrimPrefix(root.Path, urlPrefix)
+
+	rows, err := db.Query(`select id, name, url, created_date_utc, changed_date_utc
+		from folders
+		WHERE url like '%' || ? and url like ? || '%' and owner_id=?;`, url, truncatedRootPath, root.OwnerId)
 
 	checkErr(err)
 	defer rows.Close()
