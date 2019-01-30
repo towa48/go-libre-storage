@@ -262,9 +262,22 @@ func WebDav(r *gin.Engine) {
 				badRequestResult(c)
 				return
 			}
+			if fi.IsShared && fi.IsReadOnly {
+				forbiddenResult(c)
+				return
+			}
 
-			fsp := getFileSystemPath(decodedUrl, user)
-			err := os.RemoveAll(fsp)
+			// TODO: handle errors
+			absoluteFolderUrl, err := decodePath(fi.Path)
+			owner := user
+			if fi.IsShared {
+				fiOwner, _ := files.GetFolderInfoById(fi.Id)
+				absoluteFolderUrl, err = decodePath(fiOwner.Path)
+				owner, _ = users.GetUserById(fi.OwnerId)
+			}
+
+			fsp := getFileSystemPath(absoluteFolderUrl, owner)
+			err = os.RemoveAll(fsp)
 			if err != nil {
 				serverErrorResult(c)
 				return

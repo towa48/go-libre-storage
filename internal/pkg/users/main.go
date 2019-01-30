@@ -66,6 +66,27 @@ func GetUserByLogin(login string) (user User, found bool) {
 	return u, f
 }
 
+func GetUserById(userId int) (user User, found bool) {
+	db, err := sql.Open("sqlite3", config.Get().UsersDb)
+	checkErr(err)
+	defer db.Close()
+
+	rows, err := db.Query("SELECT id, login, password_hash, salt, created_date_utc FROM users WHERE id=?;", userId)
+	checkErr(err)
+	defer rows.Close()
+
+	var u User
+	var f bool
+	for rows.Next() {
+		err = rows.Scan(&u.Id, &u.Login, &u.PasswordHash, &u.Salt, &u.CreatedDateUtc)
+		checkErr(err)
+		f = true
+		break
+	}
+
+	return u, f
+}
+
 func CheckDatabase() {
 	db, err := sql.Open("sqlite3", config.Get().UsersDb)
 	checkErr(err)
