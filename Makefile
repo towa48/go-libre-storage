@@ -8,10 +8,14 @@ tools:
 	go get -u github.com/kardianos/govendor
 	npm i
 
-build-dev:
+build-dev-backend:
 	@mkdir -p ./bin
 	GOGC=off go build -i -o ./bin/go-libre-storage ./cmd/go-libre-storage
+
+build-dev-frontend:
 	npm run dev
+
+build-dev: build-dev-backend build-dev-frontend
 
 build-arm7hf:
 	@mkdir -p ./bin

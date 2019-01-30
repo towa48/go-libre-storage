@@ -30,6 +30,7 @@ var OutputPrefix *string
 func WebDav(r *gin.Engine) {
 	authorized := r.Group(WebDavPrefix, WebDavBasicAuth())
 
+	// OPTIONS / - returns supported methods
 	authorized.OPTIONS("/*path", func(c *gin.Context) {
 		u := stripPrefix(c.Request.URL.Path)
 		if u == "/" {
@@ -44,6 +45,7 @@ func WebDav(r *gin.Engine) {
 		c.String(http.StatusOK, EmptyString)
 	})
 
+	// GET /file.txt - returns file
 	authorized.Handle("GET", "/*path", func(c *gin.Context) {
 		u := stripPrefix(c.Request.URL.Path)
 		decodedUrl, err := decodePath(u)
@@ -96,6 +98,7 @@ func WebDav(r *gin.Engine) {
 		io.Copy(c.Writer, file)
 	})
 
+	// HEAD /file.txt - returns basic file info
 	authorized.HEAD("/*path", func(c *gin.Context) {
 		u := stripPrefix(c.Request.URL.Path)
 		decodedUrl, err := decodePath(u)
@@ -126,6 +129,7 @@ func WebDav(r *gin.Engine) {
 		c.Header("Content-Length", string(fi.Size))
 	})
 
+	// PROPFIND / - returns folder content
 	authorized.Handle("PROPFIND", "/*path", func(c *gin.Context) {
 		u := stripPrefix(c.Request.URL.Path)
 		decodedUrl, err := decodePath(u)
@@ -169,7 +173,7 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		resp := getMultistatusResponse(payload)
+		resp := getMultistatusResponse(payload, user.Id)
 
 		httpStatus := http.StatusMultiStatus
 		c.Status(httpStatus)
@@ -177,6 +181,7 @@ func WebDav(r *gin.Engine) {
 		c.XML(httpStatus, resp)
 	})
 
+	// MKCOL /folder - create folder
 	authorized.Handle("MKCOL", "/*path", func(c *gin.Context) {
 		u := stripPrefix(c.Request.URL.Path)
 		decodedUrl, err := decodePath(u)
@@ -230,6 +235,7 @@ func WebDav(r *gin.Engine) {
 		c.String(http.StatusCreated, EmptyString)
 	})
 
+	// DELETE /folder - remove file or folder
 	authorized.DELETE("/*path", func(c *gin.Context) {
 		u := stripPrefix(c.Request.URL.Path)
 		decodedUrl, err := decodePath(u)
@@ -286,6 +292,7 @@ func WebDav(r *gin.Engine) {
 		c.Status(http.StatusNoContent)
 	})
 
+	// PUT /file.txt - create file
 	authorized.PUT("/*path", func(c *gin.Context) {
 		u := stripPrefix(c.Request.URL.Path)
 		decodedUrl, err := decodePath(u)
@@ -409,6 +416,7 @@ func WebDav(r *gin.Engine) {
 		//507 Insufficient Storage
 	})
 
+	// PROPPATCH /file.txt - update file properties
 	authorized.Handle("PROPPATCH", "/*path", func(c *gin.Context) {
 		c.String(http.StatusMethodNotAllowed, "Method not allowed")
 	})
@@ -624,10 +632,16 @@ func parseDepth(s string) int {
 	return invalidDepth
 }
 
-func getMultistatusResponse(payload []files.DbFileInfo) Multistatus {
+func getMultistatusResponse(payload []files.DbFileInfo, currentUserId int) Multistatus {
 	var responses []MultistatusResponse
 
 	for _, fi := range payload {
+		var isOwner = fi.OwnerId == currentUserId
+		var ownerName = ""
+		if !isOwner {
+			ownerName = "someone" // TODO: get user name from DB/Cache
+		}
+
 		if fi.IsDir {
 			responses = append(responses, MultistatusResponse{
 				Href: fi.Path,
@@ -638,6 +652,7 @@ func getMultistatusResponse(payload []files.DbFileInfo) Multistatus {
 						CreationDate:     fi.CreatedDateUtc.Format(time.RFC3339),
 						LastModifiedDate: fi.ModifiedDateUtc.Format(time.RFC1123),
 						ResourceType:     &CollectionResourceType{},
+						Owner:            ownerName,
 					},
 				},
 			})
@@ -653,6 +668,7 @@ func getMultistatusResponse(payload []files.DbFileInfo) Multistatus {
 						ETag:             fi.ETag,
 						ContentType:      fi.Mime,
 						ContentLength:    strconv.FormatInt(fi.Size, 10),
+						Owner:            ownerName,
 					},
 				},
 			})
@@ -687,6 +703,7 @@ type DirPropStat struct {
 	CreationDate     string      `xml:"d:prop>d:creationdate"`
 	DisplayName      string      `xml:"d:prop>d:displayname"`
 	LastModifiedDate string      `xml:"d:prop>d:getlastmodified"`
+	Owner            string      `xml:"d:prop>d:owner"`
 	ResourceType     interface{} `xml:"d:prop>d:resourcetype"`
 }
 
@@ -698,7 +715,9 @@ type FilePropStat struct {
 	LastModifiedDate string      `xml:"d:prop>d:getlastmodified"`
 	ContentType      string      `xml:"d:prop>d:getcontenttype"`
 	ContentLength    string      `xml:"d:prop>d:getcontentlength"`
+	Owner            string      `xml:"d:prop>d:owner"` // TBD
 	ResourceType     interface{} `xml:"d:prop>d:resourcetype"`
+	// <d:supported-privilege-set/>
 }
 
 type CollectionResourceType struct {

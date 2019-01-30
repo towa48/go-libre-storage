@@ -10,9 +10,13 @@ import (
 	"github.com/towa48/go-libre-storage/internal/pkg/config"
 )
 
+const UrlSeparator string = "/"
+
 type DbFileInfo struct {
 	Id              int64
 	IsDir           bool
+	IsShared        bool
+	IsReadOnly      bool
 	Name            string
 	Path            string
 	ETag            string
@@ -32,25 +36,36 @@ type DbHierarchyItem struct {
 	Child    *DbHierarchyItem
 }
 
-func GetFolderContent(url string, userId int, urlPrefix string, includeContent bool) (items []DbFileInfo, hasAccess bool) {
+func GetFolderContent(url string, userId int, urlPrefix string, includeContent bool) (items []DbFileInfo, found bool) {
 	var result []DbFileInfo
 
 	db := GetDbConnection()
 	defer db.Close()
 
 	folder, found := getFolderInfo(db, url, urlPrefix, userId)
+
 	if !found {
-		return nil, false
+		folder, found = getSharedFolderInfo(db, url, urlPrefix, userId)
+		if !found {
+			return nil, false
+		}
 	}
 
+	var isRoot bool
 	if url == "/" {
 		folder.Name = config.Get().SystemName
+		isRoot = true
 	}
 
 	result = append(result, folder)
 
 	if includeContent {
-		content := getFolderContent(db, userId, folder.Id, urlPrefix)
+		var content []DbFileInfo
+		if folder.IsShared {
+			content = getSharedFolderContent(db, folder, urlPrefix)
+		} else {
+			content = getFolderContent(db, userId, folder.Id, urlPrefix, isRoot)
+		}
 		for _, c := range content {
 			result = append(result, c)
 		}
@@ -95,7 +110,20 @@ func GetFileHierarchy(fileId int64) (root DbHierarchyItem, found bool) {
 		return it, f
 	}
 
-	rows, err := db.Query("with t as (select id, name, owner_id, parent_id from folders where id=? union all select f.id, f.name, f.owner_id, f.parent_id from t join folders as f on f.id = t.parent_id) select t.id, t.name, t.owner_id, t.parent_id from t;", *it.ParentId)
+	rows, err := db.Query(`with t
+	as
+	(
+		select id, name, owner_id, parent_id
+		from folders
+		where id=?
+		union all
+		select f.id, f.name, f.owner_id, f.parent_id
+		from t
+		join folders as f
+		on f.id = t.parent_id
+	)
+	select t.id, t.name, t.owner_id, t.parent_id from t;`, *it.ParentId)
+
 	checkErr(err)
 	defer rows.Close()
 
@@ -209,12 +237,17 @@ func createSchemaTable(db *sql.DB, version string) {
 	checkErr(err)
 }
 
-func getFolderContent(db *sql.DB, userId int, folderId int64, urlPrefix string) []DbFileInfo {
-	rows, err := db.Query("SELECT id, name, url, created_date_utc, changed_date_utc FROM folders WHERE parent_id=? and owner_id=?;", folderId, userId)
+func getFolderContent(db *sql.DB, userId int, folderId int64, urlPrefix string, isRoot bool) []DbFileInfo {
+	var result []DbFileInfo
+
+	// include user folders
+	rows, err := db.Query(`SELECT f.id, f.name, f.url, f.created_date_utc, f.changed_date_utc
+		FROM folders as f
+		WHERE f.parent_id=? and f.owner_id=?;`, folderId, userId)
+
 	checkErr(err)
 	defer rows.Close()
 
-	var result []DbFileInfo
 	for rows.Next() {
 		it := DbFileInfo{
 			IsDir:   true,
@@ -227,7 +260,45 @@ func getFolderContent(db *sql.DB, userId int, folderId int64, urlPrefix string) 
 		result = append(result, it)
 	}
 
-	rows, err = db.Query("SELECT id, name, url, created_date_utc, changed_date_utc, etag, mime_type, size FROM files WHERE folder_id=? and owner_id=?;", folderId, userId)
+	// include root shared folders
+	if isRoot {
+		rows, err = db.Query(`SELECT f.id, f.name, f.url, f.created_date_utc, f.changed_date_utc, f.owner_id, s.read_only, f2.url as parentUrl
+			FROM shared_folders s
+			INNER JOIN folders as f
+				ON f.id = s.folder_id
+			LEFT OUTER JOIN folders as f2
+				ON f2.id = f.parent_id AND f.parent_id IS NOT NULL
+			WHERE s.target_user_id=?;`, userId)
+
+		checkErr(err)
+		defer rows.Close()
+
+		var readOnly int
+		var parentUrl *string
+		for rows.Next() {
+			it := DbFileInfo{
+				IsDir:    true,
+				IsShared: true,
+			}
+			err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc, &it.OwnerId, &readOnly, &parentUrl)
+			checkErr(err)
+
+			// exclude parent url from shared folder
+			if parentUrl != nil {
+				it.Path = UrlSeparator + strings.TrimPrefix(it.Path, *parentUrl)
+			}
+
+			it.IsReadOnly = readOnly > 0
+			it.Path = urlJoin(urlPrefix, it.Path)
+
+			result = append(result, it)
+		}
+	}
+
+	// include user files
+	rows, err = db.Query(`SELECT id, name, url, created_date_utc, changed_date_utc, etag, mime_type, size
+		FROM files
+		WHERE folder_id=? and owner_id=?;`, folderId, userId)
 	checkErr(err)
 	defer rows.Close()
 
@@ -240,6 +311,60 @@ func getFolderContent(db *sql.DB, userId int, folderId int64, urlPrefix string) 
 		checkErr(err)
 
 		it.Path = urlJoin(urlPrefix, it.Path)
+		result = append(result, it)
+	}
+
+	return result
+}
+
+func getSharedFolderContent(db *sql.DB, parentFolder DbFileInfo, urlPrefix string) []DbFileInfo {
+	var result []DbFileInfo
+
+	rows, err := db.Query(`SELECT id, name, url, created_date_utc, changed_date_utc
+		FROM folders
+		WHERE owner_id=? AND parent_id=?;`, parentFolder.OwnerId, parentFolder.Id)
+
+	checkErr(err)
+	defer rows.Close()
+
+	for rows.Next() {
+		it := DbFileInfo{
+			IsDir:    true,
+			IsShared: true,
+		}
+		err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc)
+		checkErr(err)
+
+		// cut path started from parent path
+		startPos := strings.LastIndex(it.Path, strings.TrimPrefix(parentFolder.Path, urlPrefix))
+		folderRelativePath := it.Path[startPos:]
+
+		it.OwnerId = parentFolder.OwnerId
+		it.IsReadOnly = parentFolder.IsReadOnly
+		it.Path = urlJoin(urlPrefix, folderRelativePath)
+		result = append(result, it)
+	}
+
+	rows, err = db.Query(`SELECT id, name, url, created_date_utc, changed_date_utc, etag, mime_type, size
+		FROM files
+		WHERE folder_id=? and owner_id=?;`, parentFolder.Id, parentFolder.OwnerId)
+	checkErr(err)
+	defer rows.Close()
+
+	for rows.Next() {
+		it := DbFileInfo{
+			IsDir:    false,
+			IsShared: true,
+			OwnerId:  parentFolder.OwnerId,
+		}
+		err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc, &it.ETag, &it.Mime, &it.Size)
+		checkErr(err)
+
+		// cut path started from parent path
+		startPos := strings.LastIndex(it.Path, strings.TrimPrefix(parentFolder.Path, urlPrefix))
+		fileRelativePath := it.Path[startPos:]
+
+		it.Path = urlJoin(urlPrefix, fileRelativePath)
 		result = append(result, it)
 	}
 
@@ -295,6 +420,79 @@ func getFolderInfo(db *sql.DB, url string, urlPrefix string, userId int) (item D
 		it.Path = urlJoin(urlPrefix, it.Path)
 		it.IsDir = true
 		it.OwnerId = userId
+		f = true
+		break
+	}
+
+	return it, f
+}
+
+func getSharedFolderInfo(db *sql.DB, url string, urlPrefix string, userId int) (item DbFileInfo, found bool) {
+	urlParts := urlSplit(url)
+	rootFolder := urlParts[0]
+	rootFolderUrl := UrlSeparator + rootFolder + UrlSeparator
+
+	fmt.Println(url, rootFolderUrl)
+
+	var rootFolderId int64
+	var rootOwnerId int
+	var rootIsReadOnly bool
+	var f bool
+
+	// check root folder is shared
+	rows, err := db.Query(`SELECT f.id, f.owner_id, s.read_only
+		FROM shared_folders AS s
+		INNER JOIN folders AS f
+			ON s.folder_id = f.id
+		WHERE s.target_user_id=? AND f.url like '%' || ?;`, userId, rootFolderUrl)
+
+	checkErr(err)
+	defer rows.Close()
+
+	var readOnlyInt int
+	for rows.Next() {
+		err = rows.Scan(&rootFolderId, &rootOwnerId, &readOnlyInt)
+		checkErr(err)
+
+		rootIsReadOnly = readOnlyInt > 0
+		f = true
+	}
+
+	if !f {
+		var it DbFileInfo
+		return it, false // TODO: return nil
+	}
+
+	rows, err = db.Query(`with t
+		as
+		(
+			select id, name, parent_id, url, created_date_utc, changed_date_utc
+			from folders
+			where id = ?
+			union all
+			select f.id, f.name, f.parent_id, f.url, f.created_date_utc, f.changed_date_utc
+			from t
+			join folders as f
+				on f.parent_id = t.id
+		)
+		select t.id, t.name, t.url, t.created_date_utc, t.changed_date_utc
+		from t
+		where t.url like '%' || ?;`, rootFolderId, url)
+
+	checkErr(err)
+	defer rows.Close()
+
+	var it DbFileInfo
+	for rows.Next() {
+		err = rows.Scan(&it.Id, &it.Name, &it.Path, &it.CreatedDateUtc, &it.ModifiedDateUtc)
+		checkErr(err)
+
+		it.Path = urlJoin(urlPrefix, url) // get only url suffix from original one
+		it.OwnerId = rootOwnerId
+		it.IsDir = true
+		it.IsShared = true
+		it.IsReadOnly = rootIsReadOnly
+
 		f = true
 		break
 	}
@@ -380,8 +578,15 @@ func checkErr(err error) {
 }
 
 func urlJoin(base string, item string) string {
-	if !strings.HasSuffix(base, "/") && !strings.HasPrefix(item, "/") {
-		base = base + "/"
+	if !strings.HasSuffix(base, UrlSeparator) && !strings.HasPrefix(item, UrlSeparator) {
+		base = base + UrlSeparator
 	}
 	return base + item
+}
+
+func urlSplit(url string) []string {
+	url = strings.TrimLeft(url, UrlSeparator)
+	url = strings.TrimRight(url, UrlSeparator)
+
+	return strings.Split(url, UrlSeparator)
 }
