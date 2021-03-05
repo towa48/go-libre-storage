@@ -126,7 +126,7 @@ func WebDav(r *gin.Engine) {
 		c.Header("Content-Type", fi.Mime)
 		c.Header("ETag", fi.ETag)
 		c.Header("Last-Modified", fi.ModifiedDateUtc.Format(time.RFC1123))
-		c.Header("Content-Length", string(fi.Size))
+		c.Header("Content-Length", string(rune(fi.Size)))
 	})
 
 	// PROPFIND / - returns folder content
@@ -200,7 +200,26 @@ func WebDav(r *gin.Engine) {
 			return
 		}
 
-		dir := getFileSystemPath(decodedUrl, user)
+		folderUrl := decodedUrl
+		owner := user
+		sharedFolder, isShared := files.FindSharedRootFolder(encodedUrl, user.Id)
+		if isShared {
+			if sharedFolder.IsReadOnly {
+				forbiddenResult(c)
+				return
+			}
+
+			// TODO: handle errors
+			ownerFolder, _ := files.GetFolderInfoById(sharedFolder.Id)
+			ownerPath := ownerFolder.Path + strings.TrimPrefix(strings.TrimLeft(encodedUrl, UrlSeparator), encodePath(sharedFolder.Name))
+			folderUrl, _ = decodePath(ownerPath)
+			owner, _ = users.GetUserById(sharedFolder.OwnerId)
+
+			// TODO: remove logging
+			fmt.Println(folderUrl)
+		}
+
+		dir := getFileSystemPath(folderUrl, owner)
 
 		err = os.MkdirAll(dir, os.ModePerm)
 		if err != nil {

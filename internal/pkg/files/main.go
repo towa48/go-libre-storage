@@ -169,6 +169,13 @@ func ShareFolderToUser(folderId int64, userId int, readOnly bool) {
 	shareFolderToUser(db, folderId, userId, readOnly)
 }
 
+func FindSharedRootFolder(url string, userId int) (item DbFileInfo, found bool) {
+	db := GetDbConnection()
+	defer db.Close()
+
+	return findSharedRoot(db, url, "", userId)
+}
+
 func ClearUserStorage(userId int) {
 	db := GetDbConnection()
 	defer db.Close()

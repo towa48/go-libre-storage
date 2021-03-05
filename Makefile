@@ -10,7 +10,7 @@ tools:
 
 build-dev-backend:
 	@mkdir -p ./bin
-	GOGC=off go build -i -o ./bin/go-libre-storage ./cmd/go-libre-storage
+	GOGC=off go build -o ./bin/go-libre-storage ./cmd/go-libre-storage
 
 build-dev-frontend:
 	npm run dev

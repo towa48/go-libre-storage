@@ -11,6 +11,13 @@ Cloud storage and file share platform writen in [Go](https://golang.org) (Golang
 For RaspberryPi 3 (BCM2837) builds:
 * [armv7 hf gcc toolchain](http://gnutoolchains.com/raspberry/)
 
+## Getting source
+
+```
+> mkdir -p ~/go/src/github.com/towa48 && cd "$_"
+> git clone https://github.com/towa48/go-libre-storage.git
+```
+
 ## Build
 
 Windows
