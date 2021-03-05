@@ -58,6 +58,13 @@ Share folder to user
 > ./bin/go-libre-storage --share-folder 8 --to user2 --write
 ```
 
+## TODO
+
+* Migrate to go modules https://blog.golang.org/migrating-to-go-modules
+* Upgrate go dependencies
+* Fix issues https://github.com/towa48/go-libre-storage/security/dependabot
+* Migrate to React
+
 ## License
 
 [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl.txt)
