@@ -8,6 +8,7 @@ Cloud storage and file share platform writen in [Go](https://golang.org) (Golang
 * [go](https://golang.org) compiler
 * [gopls](https://github.com/golang/tools/blob/master/gopls/README.md) Go language server
 * [TDM-GCC-64](http://tdm-gcc.tdragon.net) or [mingw64](https://sourceforge.net/projects/mingw-w64/) - for windows only
+* [NodeJS](https://nodejs.org)
 
 For RaspberryPi 3 (BCM2837) builds:
 * [armv7 hf gcc toolchain](http://gnutoolchains.com/raspberry/)

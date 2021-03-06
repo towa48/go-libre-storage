@@ -2,7 +2,7 @@ VERSION?="0.0.1"
 PROJECT := github.com/towa48/go-libre-storage
 GOFMT_FILES?=$$(find . -name '*.go' | grep -v vendor)
 DEPLOY_DIR = ./dist
-DEPLOY_FILES = ./bin ./configs/ ./web ./LICENSE ./README.md
+DEPLOY_FILES = ./bin ./configs/ ./views ./web ./LICENSE ./README.md
 
 tools:
 	npm i
@@ -12,7 +12,7 @@ build-dev-backend:
 	go build -o ./bin/go-libre-storage ./cmd/go-libre-storage
 
 build-dev-frontend:
-	npm run dev
+	npm run build
 
 build-dev: build-dev-backend build-dev-frontend
 

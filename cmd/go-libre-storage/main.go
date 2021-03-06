@@ -11,7 +11,7 @@ import (
 	"github.com/towa48/go-libre-storage/internal/pkg/users"
 )
 
-const templatesPath = "./web/templates/"
+const templatesPath = "./views/"
 
 func createRender() multitemplate.Renderer {
 	r := multitemplate.NewRenderer()
@@ -35,14 +35,11 @@ func setupRouter() *gin.Engine {
 	router.HTMLRender = createRender()
 
 	// static
-	router.Static("/js", "./web/wwwroot/js")
-	router.Static("/styles", "./web/wwwroot/styles")
-	router.Static("/images", "./web/wwwroot/images")
-	router.Static("/fonts", "./web/wwwroot/fonts")
-	router.StaticFile("/robots.txt", "./web/wwwroot/robots.txt")
-	router.StaticFile("/site.webmanifest", "./web/wwwroot/site.webmanifest")
-	router.StaticFile("/favicon.ico", "./web/wwwroot/favicon.ico")
-	router.StaticFile("/icon.png", "./web/wwwroot/icon.png")
+	router.Static("/assets", "./web/assets")
+	router.StaticFile("/robots.txt", "./web/public/robots.txt")
+	router.StaticFile("/manifest.json", "./web/public/manifest.json")
+	router.StaticFile("/favicon.ico", "./web/public/favicon.ico")
+	router.StaticFile("/favicon.png", "./web/public/favicon.png")
 
 	Home(router)
 	Accounts(router)
