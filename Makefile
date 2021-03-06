@@ -5,12 +5,11 @@ DEPLOY_DIR = ./dist
 DEPLOY_FILES = ./bin ./configs/ ./web ./LICENSE ./README.md
 
 tools:
-	go get -u github.com/kardianos/govendor
 	npm i
 
 build-dev-backend:
 	@mkdir -p ./bin
-	GOGC=off go build -o ./bin/go-libre-storage ./cmd/go-libre-storage
+	go build -o ./bin/go-libre-storage ./cmd/go-libre-storage
 
 build-dev-frontend:
 	npm run dev

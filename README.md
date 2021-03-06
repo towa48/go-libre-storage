@@ -6,6 +6,7 @@ Cloud storage and file share platform writen in [Go](https://golang.org) (Golang
 ## Prerequisites
 
 * [go](https://golang.org) compiler
+* [gopls](https://github.com/golang/tools/blob/master/gopls/README.md) Go language server
 * [TDM-GCC-64](http://tdm-gcc.tdragon.net) or [mingw64](https://sourceforge.net/projects/mingw-w64/) - for windows only
 
 For RaspberryPi 3 (BCM2837) builds:
