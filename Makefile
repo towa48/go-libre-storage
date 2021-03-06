@@ -30,18 +30,6 @@ deploy:
 clean:
 	@rm -rf ./bin $(DEPLOY_DIR)
 
-vendor-list:
-	@govendor list
-
-vendor-update:
-	@govendor update +vendor
-
-vendor-sync:
-	@govendor sync
-
-fmt:
-	@govendor fmt +local
-
 # disallow any parallelism (-j) for Make. This is necessary since some
 # commands during the build process create temporary files that collide
 # under parallel conditions.
