@@ -6,8 +6,8 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npm-run-all build:styles build:scripts",
     "build:production": "npm-run-all build:styles:production build:scripts:production",
-    "build:scripts": "react-scripts build",
-    "build:scripts:production": "react-scripts build",
+    "build:scripts": "cross-env PUBLIC_URL='/' react-app-rewired build",
+    "build:scripts:production": "cross-env PUBLIC_URL='/' react-app-rewired build",
     "build:styles": "node-sass web/wwwroot/main-bundle.scss web/wwwroot/main-bundle.css --include-path node_modules",
     "build:styles:production": "node-sass web/wwwroot/main-bundle.scss web/wwwroot/main-bundle.css --include-path node_modules --output-style compressed",
     "eject": "react-scripts eject"
@@ -23,8 +23,10 @@
   },
   "homepage": "https://github.com/towa48/go-libre-storage#readme",
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "node-sass": "^5.0.0",
     "npm-run-all": "^4.1.5",
+    "react-app-rewired": "^2.1.8",
     "react-scripts": "4.0.3",
     "webpack": "^4.44.2"
   },

@@ -18,6 +18,7 @@ third_party/*/
 # release
 bin/
 dist/
+web/build/
 
 # sqlite
 *.db
