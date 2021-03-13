@@ -1,6 +1,7 @@
 package main
 
 import (
+	"html/template"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -19,7 +20,7 @@ func Home(router *gin.Engine) {
 
 		if isAuthenticated(c) {
 			runtimeContent, _ := assets.GetAssetContent(manifest.MainRuntimeUrl)
-			viewModel["runtimeContent"] = runtimeContent
+			viewModel["runtimeScript"] = template.JS(runtimeContent)
 			viewModel["styleUrl"] = manifest.MainStyleUrl
 			viewModel["scriptUrl"] = manifest.MainScriptUrl
 
@@ -28,7 +29,7 @@ func Home(router *gin.Engine) {
 		}
 
 		runtimeContent, _ := assets.GetAssetContent(manifest.WelcomeRuntimeUrl)
-		viewModel["runtimeContent"] = runtimeContent
+		viewModel["runtimeScript"] = template.JS(runtimeContent)
 		viewModel["styleUrl"] = manifest.WelcomeStyleUrl
 		viewModel["scriptUrl"] = manifest.WelcomeScriptUrl
 

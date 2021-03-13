@@ -3,6 +3,7 @@ package assets
 import (
 	"encoding/json"
 	"io/ioutil"
+	"path"
 	"strings"
 
 	"github.com/towa48/go-libre-storage/internal/pkg/config"
@@ -50,22 +51,34 @@ func GetAssetsManifest() (value Manifest, err error) {
 	return *manifest, nil
 }
 
-func GetAssetContent(path string) (content string, err error) {
-	if val, ok := cachedContent[path]; ok {
+func GetAssetContent(p string) (content string, err error) {
+	if cachedContent == nil {
+		cachedContent = make(map[string]string, 5)
+	}
+
+	if val, ok := cachedContent[p]; ok {
 		return val, nil
 	}
 
-	bytes, err := ioutil.ReadFile(path)
+	manifestPath := config.Get().AssetManifestPath
+	basePath := path.Dir(manifestPath)
+	fullPath := path.Join(basePath, p)
+
+	bytes, err := ioutil.ReadFile(fullPath)
 	if err != nil {
 		return "", err
 	}
 
-	cachedContent[path] = string(bytes)
-	return cachedContent[path], nil
+	// remove source maps
+	c := string(bytes)
+	i := strings.Index(c, "//# sourceMappingURL")
+	cachedContent[p] = c[0:i]
+
+	return cachedContent[p], nil
 }
 
-func isChunk(path string) bool {
-	return strings.HasSuffix(path, ".chunk.js")
+func isChunk(p string) bool {
+	return strings.HasSuffix(p, ".chunk.js")
 }
 
 func filter(values map[string]interface{}, test func(string) bool) (ret []string) {
