@@ -8,8 +8,8 @@
     "build:production": "npm-run-all build:scripts:production build:styles:production",
     "build:scripts": "cross-env PUBLIC_URL='/' react-app-rewired build",
     "build:scripts:production": "cross-env PUBLIC_URL='/' react-app-rewired build",
-    "build:styles": "node-sass web/wwwroot/common-bundle.scss web/build/static/css/common-bundle.css --include-path node_modules",
-    "build:styles:production": "node-sass web/wwwroot/common-bundle.scss web/build/static/css/common-bundle.css --include-path node_modules --output-style compressed",
+    "build:styles": "node-sass web/src/common-bundle.scss web/build/static/css/common-bundle.css --include-path node_modules",
+    "build:styles:production": "node-sass web/src/common-bundle.scss web/build/static/css/common-bundle.css --include-path node_modules --output-style compressed",
     "eject": "react-scripts eject"
   },
   "repository": {

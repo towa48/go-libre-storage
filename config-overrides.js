@@ -16,7 +16,7 @@ module.exports = {
         const mainEntry = config.entry;
         config.entry = {
             'main': mainEntry, // the main key is required by react-scripts
-            'welcome': path.resolve(__dirname, 'web/wwwroot/welcome.js')
+            'welcome': path.resolve(__dirname, 'web/src/welcome.js')
         }
         return config;
     },
@@ -29,10 +29,10 @@ module.exports = {
       };
     },
     paths: function (paths, env) {
-        paths['appPublic'] = path.resolve(__dirname, 'web/assets');
-        paths['appHtml'] = path.resolve(__dirname, 'web/assets/index.html');
-        paths['appIndexJs'] = path.resolve(__dirname, 'web/wwwroot/index.js');
-        paths['appSrc'] = path.resolve(__dirname, 'web/wwwroot/');
+        paths['appPublic'] = path.resolve(__dirname, 'web/public');
+        paths['appHtml'] = path.resolve(__dirname, 'web/public/index.html');
+        paths['appIndexJs'] = path.resolve(__dirname, 'web/src/index.js');
+        paths['appSrc'] = path.resolve(__dirname, 'web/src/');
         paths['appBuild'] = path.resolve(__dirname, 'web/build/');
         return paths;
     },
