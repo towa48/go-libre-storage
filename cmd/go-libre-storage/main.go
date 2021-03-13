@@ -35,11 +35,14 @@ func setupRouter() *gin.Engine {
 	router.HTMLRender = createRender()
 
 	// static
-	router.Static("/assets", "./web/assets")
-	router.StaticFile("/robots.txt", "./web/public/robots.txt")
-	router.StaticFile("/manifest.json", "./web/public/manifest.json")
-	router.StaticFile("/favicon.ico", "./web/public/favicon.ico")
-	router.StaticFile("/favicon.png", "./web/public/favicon.png")
+	router.Static("/static/js", "./web/build/static/js")
+	router.Static("/static/css", "./web/build/static/css")
+	router.Static("/fonts", "./web/build/fonts")
+	router.Static("/images", "./web/build/images")
+	router.StaticFile("/robots.txt", "./web/build/robots.txt")
+	router.StaticFile("/manifest.json", "./web/build/manifest.json")
+	router.StaticFile("/favicon.ico", "./web/build/favicon.ico")
+	router.StaticFile("/favicon.png", "./web/build/favicon.png")
 
 	Home(router)
 	Accounts(router)

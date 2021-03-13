@@ -1,8 +1,11 @@
 {{ define "styles" }}
+<link href="{{.styleUrl}}" rel="stylesheet">
 {{ end }}
 
 {{ define "scripts" }}
-<script src="/js/welcome-bundle.js" async></script>
+<script>{{.runtimeScript}}</script>
+<script src="{{.chunkUrl}}"></script>
+<script src="{{.scriptUrl}}"></script>
 {{ end }}
 
 {{ define "content" }}

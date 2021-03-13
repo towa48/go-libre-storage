@@ -5,3 +5,4 @@ systemName: "box"
 systemTitle: "Go Libre Storage"
 includeWebDavPath: true
 cookieSecret: "tfYWZV5sUMdM"
+assetManifestPath: "web/build/asset-manifest.json"
