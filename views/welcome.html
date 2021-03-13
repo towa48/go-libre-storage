@@ -9,26 +9,24 @@
 {{ end }}
 
 {{ define "content" }}
-<div id="app" class="intro">
+<div class="intro">
     <div class="intro_inner-bg intro_text intro_inner intro_inner__centered">
         <div class="intro_navbar"></div>
         <div class="intro_stage">
             <div class="container">
                 <div class="row">
                     <div class="col-md-12">
-                        <div class="login-form">
+                        <div class="login-form" id="app">
                             <form>
                                 <h2 class="text-center">Login</h2>
                                 <div class="form-group">
-                                    <input type="text" class="form-control" name="username" placeholder="Username" required="required"
-                                        v-model="username">
+                                    <input type="text" class="form-control" name="username" placeholder="Username" required="required" />
                                 </div>
                                 <div class="form-group">
-                                    <input type="password" class="form-control" name="password" placeholder="Password" required="required"
-                                        v-model="password">
+                                    <input type="password" class="form-control" name="password" placeholder="Password" required="required" />
                                 </div>
                                 <div class="form-group">
-                                    <button type="submit" class="btn btn-primary btn-lg btn-block" v-on:click.prevent="signIn">Sign in</button>
+                                    <button type="submit" class="btn btn-primary btn-lg btn-block">Sign in</button>
                                 </div>
                                 <!--<p><a href="#">Lost your Password?</a></p>-->
                             </form>
