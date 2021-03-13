@@ -18,6 +18,7 @@ type Config struct {
 	SystemTitle       string `yaml:"systemTitle"`
 	IncludeWebDavPath bool   `yaml:"includeWebDavPath"`
 	CookieSecret      string `yaml:"cookieSecret"`
+	AssetManifestPath string `yaml:"assetManifestPath"`
 }
 
 func Get() Config {
