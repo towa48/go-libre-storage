@@ -1,4 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
+import { HttpStatus, $http } from '../../utils/http';
+import { $location } from '../../utils/location';
+import routes from './routes';
 
 const initialState = {
     login: '',
@@ -54,11 +57,35 @@ export const {
 export const doLoginAsync = (login, password) => dispatch => {
     dispatch(clearError());
     dispatch(setProgress(true));
-    console.log(login, password);
-    setTimeout(() => {
+
+    const data = {
+        username: login,
+        password: password,
+        rememberMe: false
+    };
+
+    $http.post(routes.signIn, data).then(function(resp) {
+        switch(resp.status) {
+            case HttpStatus.OK:
+                resp.json().then(function(data) {
+                    $location.url(data.Url || '/');
+                });
+                break;
+            case HttpStatus.BAD_REQUEST:
+                resp.json().then(function(data) {
+                    dispatch(setProgress(false));
+                    dispatch(setError('InvalidCredentials'));
+                });
+                break;
+            case HttpStatus.SERVER_ERROR:
+                dispatch(setProgress(false));
+                dispatch(setError('ServerError'));
+                break;
+        }
+    }).catch(function(err) {
         dispatch(setProgress(false));
-        dispatch(setError('InvalidCredentials'));
-    }, 1000);
+        dispatch(setError('UnknownError'));
+    });
 }
 
 /*
