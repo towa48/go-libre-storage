@@ -5,14 +5,19 @@ export default class LoginForm extends React.Component {
         login: PropTypes.string,
         password: PropTypes.string,
         inProgress: PropTypes.bool,
+        isPasswordShown: PropTypes.bool,
         onChangeLogin: PropTypes.func,
         onChangePassword: PropTypes.func,
         onSubmit: PropTypes.func,
+        error: PropTypes.string,
     };
 
     static defaultProps = {
         login: '',
         password: '',
+        inProgress: false,
+        isPasswordShown: false,
+        error: null
     };
 
     constructor(props) {
@@ -21,6 +26,7 @@ export default class LoginForm extends React.Component {
         this.changeLogin = this.changeLogin.bind(this);
         this.changePassword = this.changePassword.bind(this);
         this.submitForm = this.submitForm.bind(this);
+        this.togglePasswordVisibility = this.togglePasswordVisibility.bind(this);
     }
 
     changeLogin(event) {
@@ -38,9 +44,17 @@ export default class LoginForm extends React.Component {
         }
     }
 
+    togglePasswordVisibility() {
+        this.props.onTogglePasswordVisibility();
+    }
+
     render() { 
         const login = this.props.login;
         const password = this.props.password;
+        const isPasswordShown = this.props.isPasswordShown;
+        const error = this.props.error;
+        const errorClass = error ? ' is-invalid' : '';
+
         return (
         <form onSubmit={this.submitForm(login, password)}>
             <h2 class="text-center">Login</h2>
@@ -56,13 +70,27 @@ export default class LoginForm extends React.Component {
             </div>
             <div class="form-group">
                 <input
-                    type="password"
-                    class="form-control"
+                    type={isPasswordShown ? 'text' : 'password'}
+                    class={`form-control${errorClass}`}
                     name="password"
+                    spellcheck="false"
+                    autocapitalize="off"
                     placeholder="Password"
                     required="required"
                     value={password}
                     onChange={this.changePassword} />
+                <div class="invalid-feedback">Can't find user with specified login and password.</div>
+            </div>
+            <div class="form-group">
+                <div class="form-check">
+                    <input
+                        type="checkbox"
+                        class="form-check-input"
+                        id="showPassword"
+                        defaultChecked={isPasswordShown}
+                        onChange={this.togglePasswordVisibility} />
+                    <label class="form-check-label" for="showPassword">Show password</label>
+                </div>
             </div>
             <div class="form-group">
                 <button
