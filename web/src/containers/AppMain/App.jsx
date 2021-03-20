@@ -1,54 +1,23 @@
 import React from 'react';
-import './App.css';
+import { Header } from '../../components/Header/Header';
+import { Sidebar } from '../../components/Sidebar/Sidebar';
+import { Footer } from '../../components/Footer/Footer';
+import 'normalize.css';
+import './App.scss';
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <span>
-          <span>Learn </span>
-          <a
-            className="App-link"
-            href="https://reactjs.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            React
-          </a>
-          <span>, </span>
-          <a
-            className="App-link"
-            href="https://redux.js.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Redux
-          </a>
-          <span>, </span>
-          <a
-            className="App-link"
-            href="https://redux-toolkit.js.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Redux Toolkit
-          </a>
-          ,<span> and </span>
-          <a
-            className="App-link"
-            href="https://react-redux.js.org/"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            React Redux
-          </a>
-        </span>
-      </header>
-    </div>
-  );
+    return (
+        <div class="root">
+            <Header />
+            <Sidebar />
+            <div class="root__content">
+                <div class="root__content-inner root__content-inner_white">
+                    Content
+                </div>
+                <Footer />
+            </div>
+        </div>
+    );
 }
 
 export default App;
