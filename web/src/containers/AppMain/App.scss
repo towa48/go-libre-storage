@@ -1,4 +1,8 @@
 //@import "../../font";
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/variables";
+
 @import "../../variables";
 
 #app, body, html {
@@ -58,3 +62,20 @@ body {
     }
 }
 
+@include media-breakpoint-down(sm) {
+    .root {
+        padding-top: 0;
+
+        &__content {
+            padding-top: 0;
+            padding-right: 10px;
+            padding-left: 10px;
+
+            &-inner {
+                &_white {
+                    padding: 16px;
+                }
+            }
+        }
+    }
+}
