@@ -24,6 +24,26 @@
         -webkit-transition: box-shadow .3s ease;
         transition: box-shadow .3s ease;
     }
+
+    &__inner {
+        display: -webkit-flex;
+        display: flex;
+        -webkit-align-items: center;
+        align-items: center;
+
+        &_left {
+            -webkit-flex: 1 1 70%;
+                    flex: 1 1 70%;
+            padding-right: 20px;
+        }
+        &_right {
+            -webkit-flex: 1 1 30%;
+                    flex: 1 1 30%;
+            -webkit-justify-content: flex-end;
+                    justify-content: flex-end;
+            padding-left: 20px;
+        }
+    }
 }
 
 @include media-breakpoint-down(sm) {
