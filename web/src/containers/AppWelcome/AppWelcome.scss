@@ -1,3 +1,18 @@
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/variables";
+
+/* rewrite variables */
+@import "../../variables";
+@import "../../font";
+
+@import "bootstrap/scss/root";
+@import "bootstrap/scss/reboot";
+@import "bootstrap/scss/type";
+@import "bootstrap/scss/grid";
+@import "bootstrap/scss/forms";
+@import "bootstrap/scss/buttons";
+
 .intro {
     background-color: $white;
     position: relative;
@@ -32,7 +47,7 @@
     }
 
     &_inner-bg {
-        background-image: url('/images/welcome-bg-1200-dark.jpg');
+        background-image: url('./welcome-bg-1200-dark.jpg');
     }
 
     &_navbar {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import './AppWelcome.css';
+import './AppWelcome.scss';
 
 import LoginForm from '../../components/LoginForm/LoginForm';
 import {

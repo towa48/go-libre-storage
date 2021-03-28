@@ -14,8 +14,9 @@ func Home(router *gin.Engine) {
 
 		manifest, _ := assets.GetAssetsManifest()
 		viewModel := gin.H{
-			"title":    "Go Libre Storage",
-			"chunkUrl": manifest.ChunkScriptUrl,
+			"title":        "Go Libre Storage",
+			"scriptChunks": manifest.ScriptChunks,
+			"styleChunks":  manifest.StyleChunks,
 		}
 
 		if isAuthenticated(c) {

@@ -37,8 +37,7 @@ func setupRouter() *gin.Engine {
 	// static
 	router.Static("/static/js", "./web/build/static/js")
 	router.Static("/static/css", "./web/build/static/css")
-	router.Static("/fonts", "./web/build/fonts")
-	router.Static("/images", "./web/build/images")
+	router.Static("/static/media", "./web/build/static/media")
 	router.StaticFile("/robots.txt", "./web/build/robots.txt")
 	router.StaticFile("/manifest.json", "./web/build/manifest.json")
 	router.StaticFile("/favicon.ico", "./web/build/favicon.ico")

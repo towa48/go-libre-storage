@@ -19,7 +19,8 @@ type Manifest struct {
 	MainStyleUrl      string
 	MainRuntimeUrl    string
 	MainScriptUrl     string
-	ChunkScriptUrl    string
+	ScriptChunks      []string
+	StyleChunks       []string
 }
 
 func GetAssetsManifest() (value Manifest, err error) {
@@ -47,7 +48,8 @@ func GetAssetsManifest() (value Manifest, err error) {
 		MainScriptUrl:     files["main.js"].(string),
 	}
 
-	manifest.ChunkScriptUrl = filter(files, isChunk)[0]
+	manifest.ScriptChunks = filter(files, isScriptChunk)
+	manifest.StyleChunks = filter(files, isStyleChunk)
 	return *manifest, nil
 }
 
@@ -77,8 +79,12 @@ func GetAssetContent(p string) (content string, err error) {
 	return cachedContent[p], nil
 }
 
-func isChunk(p string) bool {
+func isScriptChunk(p string) bool {
 	return strings.HasSuffix(p, ".chunk.js")
+}
+
+func isStyleChunk(p string) bool {
+	return strings.HasSuffix(p, ".chunk.css")
 }
 
 func filter(values map[string]interface{}, test func(string) bool) (ret []string) {

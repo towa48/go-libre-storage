@@ -19,6 +19,44 @@
         -webkit-flex-direction: column;
                 flex-direction: column;
     }
+
+    &__buttons {
+        padding: 1px 32px 10px;
+        line-height: 0;
+    }
+
+    &__navigation {
+        overflow: hidden;
+        -webkit-flex: 1;
+                flex: 1;
+        padding-left: 32px;
+        margin-right: 32px;
+        position: relative;
+
+        &:after, &:before {
+            content: "";
+            position: absolute;
+            width: 100%;
+            height: 27px;
+            left: 0;
+            right: 0;
+            pointer-events: none;
+            touch-action: none;
+            z-index: 1;
+        }
+    }
+}
+
+.navigation {
+    &__items {
+        padding-top: 27px;
+    }
+
+    &__item {
+        position: relative;
+        padding: 4px 0;
+        line-height: 0;
+    }
 }
 
 @include media-breakpoint-down(sm) {

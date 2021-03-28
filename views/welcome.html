@@ -1,11 +1,15 @@
 {{ define "styles" }}
-<link rel="stylesheet" href="/static/css/common-bundle.css">
+{{range .styleChunks}}
+<link rel="stylesheet" href="{{.}}">
+{{end}}
 <link rel="stylesheet" href="{{.styleUrl}}">
 {{ end }}
 
 {{ define "scripts" }}
 <script>{{.runtimeScript}}</script>
-<script src="{{.chunkUrl}}"></script>
+{{range .scriptChunks}}
+<script src="{{.}}"></script>
+{{end}}
 <script src="{{.scriptUrl}}"></script>
 {{ end }}
 
